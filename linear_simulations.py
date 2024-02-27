@@ -17,7 +17,7 @@ from RCT_experiment import *
 from Bayes_linear_regression import *
 from plotting_functions import *
 from MCMC_Bayesian_update import *
-    
+from utils import *
 
 
 if __name__ == '__main__':
@@ -34,7 +34,7 @@ if __name__ == '__main__':
     p_assigned_to_cand2 = lambda X_1, X_2, T, eps: sigmoid(1 - 3*X_1 + eps)
     X_rct, T_rct = generate_rct(n_host_and_mirror, x_distributions)
 
-    data_host, data_mirror = generate_host_and_mirror(X_rct, T_rct, p_assigned_to_cand2)
+    data_host, data_mirror = generate_host_and_mirror(X_rct, T_rct, p_assigned_to_cand2) # Jake: Should this be p_assigned_to_host?
     design_data_host = generate_design_matrix(data_host, power_x=1, power_x_t=1)
     design_data_mirror = generate_design_matrix(data_mirror, power_x=1, power_x_t=1)
 
@@ -95,6 +95,66 @@ if __name__ == '__main__':
                    title = 'Y_post_mirror vs Y_post_cand2 vs True Y')
 
     print('done')
+
+
+##### JAKE NEW: Added from here, this is the right formula but EIG does not work for log denom
+    ### Need to make some changes for numerical stability 
+
+#Number of samples used to estimate outer expectation
+n_samples_for_expectation = 10
+m_samples_for_expectation = int(np.ceil(np.sqrt(n_samples_for_expectation)))
+# Incorporating sqrt constraint into MCMC samples
+n_mcmc = (n_samples_for_expectation * (m_samples_for_expectation+1)) 
+
+warmup_steps = 5
+max_tree_depth = 7
+sigma_rand_error = 1
+
+## Bayesian update using the host dataset
+mcmc_host = MCMC_Bayesian_update(X =X_host, Y= Y_host, model =model_normal,
+            mu_0= beta_0, sigma_prior = sigma_prior, sigma_rand_error = sigma_rand_error,
+            n_mcmc = n_mcmc, warmup_steps = warmup_steps, max_tree_depth=max_tree_depth)
+mcmc_host.summary()
+
+beta_post_host = pd.DataFrame(mcmc_host.get_samples())
+
+#Shuffling to remove any dependence between adjacent samples
+beta_post_host = beta_post_host.sample(frac = 1)
+
+beta_post_host.head()
+# We delete the column with the std
+beta_post_host = beta_post_host.iloc[:, :-1] 
+
+# I will now do a version of computing the EIG at the mirror dataset, first we form the mirror predictions for each sampled beta:
+Y_pred_candidate = predict_with_all_sampled_betas(beta_post_host, X_mirror)
+
+#Now for the first n_samples_for_expectation terms we sample a paired imagined Y val
+Y_sampled_candidate = Y_pred_candidate[:,:n_samples_for_expectation] +  np.random.normal(0, 1, size = Y_pred_candidate[:,:n_samples_for_expectation].shape)
+
+# Now we want to compute the outer expectation, this vector will contain samples of log ratio:
+log_ratio_samples = []
+
+# Giving a standard covariance matrix:
+covariance = np.diag(np.ones_like(Y_sampled_candidate))
+
+#Now we are averaging over our a paired y,beta:
+for i,(y,y_pred_beta) in enumerate(zip(Y_sampled_candidate.T,(Y_pred_candidate[:,:n_samples_for_expectation].T))):
+    print(y.shape)
+    print(y_pred_beta.shape)
+    covariance = np.diag(np.ones_like(y))
+    # First computing the log likelihood of the numerator:
+
+    log_density_numerator = multivariate_normal_log_likelihood(y, y_pred_beta, covariance)
+
+    # Now computing the log likelihood of the denominator, first by getting the samples:
+    #Addition ensures no samples are used twice and that we use m_samples_for_expectation for each step
+
+    y_pred_beta_samples = Y_pred_candidate[:, n_samples_for_expectation + i*m_samples_for_expectation:n_samples_for_expectation + (i+1)*m_samples_for_expectation ]
+    log_density_denominator = predictive_normal_log_likelihood(y, y_pred_beta_samples, covariance)
+
+    log_ratio_samples.append(log_density_numerator-log_density_denominator)
+
+EIG = sum(log_ratio_samples)/len(log_ratio_samples)
 
 
 ##### JAKE: read from here
