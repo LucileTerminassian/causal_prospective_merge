@@ -57,15 +57,17 @@ def log_ratio_calc(y,y_pred_beta,y_pred_beta_samples, covariance):
     ### multivariate_normal_log_likelihood(y, y_pred, covariance) - denom_likelihood is still so small that
     ### The exp of it is too large, I dont know how to get round this apart from increasing covariance
     """
-    Compute the log likelihood of the posterior predictive  .
+    Compute the log ratio given by:
+    log (P(y | theta, x,t )/P(y | x,t ) )
 
     Parameters:
     - y: y values to be input into likelihood as a numpy array (n), where n is the number of samples.
-    - y_pred_vec: Predictions as a numpy array (n x d), where d is the number of predictions to be averaged over. 
+    - y_pred_beta: The paired prediction for y that is used to generate y
+    - y_pred_beta_samples: A number of samples to be used to estimate the bottom marginal
     - covariance: Covariance matrix of the multivariate normal distribution.
 
     Returns:
-    - log_predictive_likelihood: Log likelihood of the posterior predictive at y.
+    - llog (P(y | theta, x,t )/P(y | x,t ) ): An estimate of this term for a given y.
     """
     likelihood_list = []
     denom_likelihood = multivariate_normal_log_likelihood(y, y_pred_beta, covariance)
