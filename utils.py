@@ -34,8 +34,10 @@ def multivariate_normal_log_likelihood(data, mean, covariance):
     log_likelihood = mvn.logpdf(data)
     return log_likelihood
 
-def predictive_normal_log_likelihood(y, y_pred_vec, covariance):
-    ### THIS IS THE FUNCTION TO BE IMPROVED 
+def log_ratio_calc(y,y_pred_beta,y_pred_beta_samples, covariance):
+    ### This is an attempted fix given what we discussed before, however it still does not seem to work....
+    ### multivariate_normal_log_likelihood(y, y_pred, covariance) - denom_likelihood is still so small that
+    ### The exp of it is too large, I dont know how to get round this apart from increasing covariance
     """
     Compute the log likelihood of the posterior predictive  .
 
@@ -45,32 +47,13 @@ def predictive_normal_log_likelihood(y, y_pred_vec, covariance):
     - covariance: Covariance matrix of the multivariate normal distribution.
 
     Returns:
-    - log_predictive_likelihood: Log likelihood of the posterior predictive at y.
+    - log_predictive_likelihood: A single point estimate of log(P(Y| theta, X,t)) - log(P(Y| X,t)).
     """
-    likelihood_list = []
-    for y_pred in y_pred_vec.T:
-        likelihood_list.append(multivariate_normal_likelihood(y, y_pred, covariance))
-    return np.log(sum(likelihood_list)/len(likelihood_list))
-
-def log_ratio_calc(y,y_pred_beta,y_pred_beta_samples, covariance):
-    ### This is an attempted fix given what we discussed before, however it still does not seem to work....
-    ### multivariate_normal_log_likelihood(y, y_pred, covariance) - denom_likelihood is still so small that
-    ### The exp of it is too large, I dont know how to get round this apart from increasing covariance
-    """
-    Compute the log ratio given by:
-    log (P(y | theta, x,t )/P(y | x,t ) )
-
-    Parameters:
-    - y: y values to be input into likelihood as a numpy array (n), where n is the number of samples.
-    - y_pred_beta: The paired prediction for y that is used to generate y
-    - y_pred_beta_samples: A number of samples to be used to estimate the bottom marginal
-    - covariance: Covariance matrix of the multivariate normal distribution.
-
-    Returns:
-    - llog (P(y | theta, x,t )/P(y | x,t ) ): An estimate of this term for a given y.
-    """
-    likelihood_list = []
+    log_likelihood_list = []
     denom_likelihood = multivariate_normal_log_likelihood(y, y_pred_beta, covariance)
     for y_pred in y_pred_beta_samples.T:
-        likelihood_list.append( np.exp(multivariate_normal_log_likelihood(y, y_pred, covariance) - denom_likelihood))
-    return -np.log(sum(likelihood_list)/len(likelihood_list))
+        log_likelihood_list.append( multivariate_normal_log_likelihood(y, y_pred, covariance) - denom_likelihood)
+    log_likelihood_max = max(log_likelihood_list)
+    log_likelihood_max = 0
+    log_likelihood_list = [np.exp(a - log_likelihood_max) for a in log_likelihood_list]
+    return -( np.log(sum(log_likelihood_list)/len(log_likelihood_list)) + log_likelihood_max)
