@@ -22,7 +22,7 @@ def plot_densities(y1, y2, y3, names, title):
     plt.show()
 
 
-def predict_with_all_sampled_betas(beta_df, X):
+def predict_with_all_sampled_linear(beta_df, X):
     
     # Don't grab the last column, that is our estimate of the error standard deviation, "sigma"
     coefficients = beta_df.values
@@ -32,4 +32,4 @@ def predict_with_all_sampled_betas(beta_df, X):
     for i in range (len(coefficients)):
         array_list.append(pd.DataFrame(X.dot(coefficients[i,:]), index= X.index))
     
-    return np.hstack(array_list) 
+    return np.hstack(array_list).T
