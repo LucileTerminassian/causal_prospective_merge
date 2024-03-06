@@ -36,6 +36,7 @@ def multivariate_normal_log_likelihood(data, mean, covariance):
     return log_likelihood
 
 def log_posterior_predictive(y,y_pred_theta_samples, covariance):
+    
     """
     Compute the log likelihood of the posterior predictive  .
 
@@ -53,27 +54,71 @@ def log_posterior_predictive(y,y_pred_theta_samples, covariance):
         log_likelihood_list.append(multivariate_normal_log_likelihood(y, y_pred, covariance))
     return logsumexp(log_likelihood_list) - np.log(len(log_likelihood_list))
 
-def samples_in_EIG_form(Y_pred_vec,n_samples_for_expectation,m_samples_for_expectation):
+def samples_in_EIG_form (Y_pred_vec, n_outer_expectation, m_inner_expectation):
+    
     """"Gets samples in the correct form for EIG computation
     Y_pred_vec: predictions from the model over many theta
-    n_samples_for_expectation: number of samples for outer expectation
-    m_samples_for_expectation: number of samples for inner expectation
+    n_outer_expectation: number of samples for outer expectation
+    m_inner_expectation: number of samples for inner expectation
     """
 
-    if n_samples_for_expectation*m_samples_for_expectation != len(Y_pred_vec):
-        assert("n*m must be the length of the pred vector")
+    if n_outer_expectation * m_inner_expectation != len(Y_pred_vec):
+        assert("n * m must be the length of the pred vector")
     predictions_list = []
 
-    for i in range(n_samples_for_expectation):
-        predictions_list.append((Y_pred_vec[i],Y_pred_vec[m_samples_for_expectation* i+n_samples_for_expectation: m_samples_for_expectation* (i+1)+n_samples_for_expectation]))
+    for i in range(n_outer_expectation):
+        predictions_list.append((Y_pred_vec[i], \
+             Y_pred_vec[ m_inner_expectation * i + n_outer_expectation: m_inner_expectation * (i+1) + n_outer_expectation]))
     return predictions_list
 
-def calc_EIG_observational(pred_list,sigma):
+def compute_EIG_obs_from_samples(pred_list, sigma):
     n_e = len(pred_list[0][0])
     covariance = sigma*np.eye((n_e))
     sample_list = []
+    
     for y_pred,y_pred_multiple in pred_list:
         mvn = multivariate_normal(mean=y_pred, cov=covariance)
         y_sample = mvn.rvs()
         sample_list.append(log_posterior_predictive(y_sample,y_pred_multiple,covariance))
-    return -(sum(sample_list)/len(sample_list)) - n_e * np.log(sigma)
+    return -(sum(sample_list)/len(sample_list)) - n_e/2 * (1 + log(2 * np.pi * sigma **2))
+
+def compute_EIG_obs_closed_form(X, cov_matrix_prior, sigma_rand):
+
+    n_e = len(X)
+    det_term = np.linalg.det(np.dot(np.dot(X.T, np.linalg.inv(cov_matrix_prior)), X)) + (sigma_rand**2) * np.eye(n_e)
+    log_det_term = np.log(det_term)
+    log_sigma_term = n_e * np.log(sigma_rand)
+    eig = 0.5 * log_det_term - log_sigma_term
+
+    return eig
+
+def compute_EIG_obs_closed_form(X, cov_matrix_prior, sigma_rand):
+
+    n_e = len(X)
+    det_term = np.linalg.det(np.dot(np.dot(X.T, np.linalg.inv(cov_matrix_prior)), X)) + (sigma_rand**2) * np.eye(n_e)
+    log_det_term = np.log(det_term)
+    log_sigma_term = n_e * np.log(sigma_rand)
+    eig = 0.5 * log_det_term - log_sigma_term
+
+    return eig
+
+def compute_EIG_causal_closed_form(X, cov_matrix_prior, sigma_rand, causal_param_first_index):
+
+    n_e = len(X)
+    inv_cov_matrix_prior = np.linalg.inv(cov_matrix_prior)
+    sigma_a = inv_cov_matrix_prior[:causal_param_first_index, 0:causal_param_first_index]
+    sigma_b = inv_cov_matrix_prior[causal_param_first_index:, causal_param_first_index:]
+    sigma_c = inv_cov_matrix_prior[:causal_param_first_index, causal_param_first_index:]
+
+    cov_matrix_prior_nc = sigma_b - np.dot(np.dot(sigma_c.T, np.linalg.inv(sigma_a)), sigma_c)
+
+    gen_term = np.linalg.det(np.dot(np.dot(X.T, np.linalg.inv(cov_matrix_prior)), X)) + (sigma_rand**2) * np.eye(n_e)
+    log_gen_term = np.log(gen_term)
+
+    # phi_nc(X) takes only non-causal columns in X
+    phi_nc_X = X[:,:causal_param_first_index]
+    nc_term = np.linalg.det(np.dot(np.dot(phi_nc_X.T, cov_matrix_prior_nc), phi_nc_X) + (sigma_rand**2) * np.eye(n_e))
+    log_nc_term = np.log(nc_term)
+    eig = 0.5 * (log_gen_term - log_nc_term)
+
+    return eig

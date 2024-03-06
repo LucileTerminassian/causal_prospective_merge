@@ -58,7 +58,7 @@ class BayesianLinearRegression:
         # Prepare posterior parameters dictionary
         dict_posterior_parameters = {
             'posterior_mean': beta_posterior,  
-            'posterior_covariance': cov_matrix_posterior,
+            'posterior_cov_matrix': cov_matrix_posterior,
         }
 
         return dict_posterior_parameters
