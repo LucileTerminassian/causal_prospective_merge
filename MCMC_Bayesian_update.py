@@ -18,7 +18,7 @@ from Bayes_linear_regression import *
 from plotting_functions import *
 from MCMC_Bayesian_update import *
 
-def model_normal(X, Y, mu_0, sigma_prior, sigma_rand_error):
+def model_normal(X, Y, mu_0, sigma_prior, sigma_rand_error_fixed= True,sigma_rand_error=1):
 
     for i in range (len(mu_0)):
         coefficient_prior = dist.Normal(mu_0[i], sigma_prior)
@@ -27,7 +27,11 @@ def model_normal(X, Y, mu_0, sigma_prior, sigma_rand_error):
     
     
     # Define a sigma prior for the random error
-    sigma = pyro.sample("sigma", dist.HalfNormal(scale=sigma_rand_error))
+    if sigma_rand_error_fixed:
+        sigma = sigma_rand_error
+
+    else:
+        sigma = pyro.sample("sigma", dist.HalfNormal(scale=sigma_rand_error))
     
     # For a simple linear model, the expected mean is the linear combination of parameters
     mean = linear_combination
@@ -42,7 +46,7 @@ def model_normal(X, Y, mu_0, sigma_prior, sigma_rand_error):
         # Condition the expected mean on the observed target y
         observation = pyro.sample("obs", outcome_dist, obs=Y)
 
-def MCMC_Bayesian_update (X, Y, model, mu_0, sigma_prior, sigma_rand_error, 
+def MCMC_Bayesian_update (X, Y, model, mu_0, sigma_prior, sigma_rand_error=1, sigma_rand_error_fixed=True, 
             n_mcmc = 100, warmup_steps = 20, max_tree_depth=5):
 
     X_torch = torch.tensor(X.values)
