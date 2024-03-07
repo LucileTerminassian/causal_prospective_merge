@@ -27,9 +27,4 @@ def predict_with_all_sampled_linear(beta_df, X):
     # Don't grab the last column, that is our estimate of the error standard deviation, "sigma"
     coefficients = beta_df.values
     
-    array_list = []
-    # Find our linear combination again
-    for i in range (len(coefficients)):
-        array_list.append(pd.DataFrame(X.dot(coefficients[i,:]), index= X.index))
-    
-    return np.hstack(array_list).T
+    return coefficients @ X.T

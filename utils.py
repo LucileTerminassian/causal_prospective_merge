@@ -80,7 +80,7 @@ def compute_EIG_obs_from_samples(pred_list, sigma):
         mvn = multivariate_normal(mean=y_pred, cov=covariance)
         y_sample = mvn.rvs()
         sample_list.append(log_posterior_predictive(y_sample,y_pred_multiple,covariance))
-    return -(sum(sample_list)/len(sample_list)) - n_e/2 * (1 + log(2 * np.pi * sigma **2))
+    return -(sum(sample_list)/len(sample_list)) - n_e/2 * (1 + np.log(2 * np.pi * sigma **2))
 
 def compute_EIG_obs_closed_form(X, cov_matrix_prior, sigma_rand):
 
@@ -95,7 +95,7 @@ def compute_EIG_obs_closed_form(X, cov_matrix_prior, sigma_rand):
 def compute_EIG_obs_closed_form(X, cov_matrix_prior, sigma_rand):
 
     n_e = len(X)
-    det_term = np.linalg.det(np.dot(np.dot(X.T, np.linalg.inv(cov_matrix_prior)), X)) + (sigma_rand**2) * np.eye(n_e)
+    det_term = np.linalg.det( X @ (np.linalg.inv(cov_matrix_prior) @ X.T) + (sigma_rand**2) * np.eye(n_e)) 
     log_det_term = np.log(det_term)
     log_sigma_term = n_e * np.log(sigma_rand)
     eig = 0.5 * log_det_term - log_sigma_term
@@ -110,14 +110,14 @@ def compute_EIG_causal_closed_form(X, cov_matrix_prior, sigma_rand, causal_param
     sigma_b = inv_cov_matrix_prior[causal_param_first_index:, causal_param_first_index:]
     sigma_c = inv_cov_matrix_prior[:causal_param_first_index, causal_param_first_index:]
 
-    cov_matrix_prior_nc = sigma_b - np.dot(np.dot(sigma_c.T, np.linalg.inv(sigma_a)), sigma_c)
+    cov_matrix_prior_nc = sigma_b - np.dot(np.dot(sigma_c.T, np.linalg.inv(sigma_a) ) , sigma_c)
 
-    gen_term = np.linalg.det(np.dot(np.dot(X.T, np.linalg.inv(cov_matrix_prior)), X)) + (sigma_rand**2) * np.eye(n_e)
+    gen_term = np.linalg.det( X @ (np.linalg.inv(cov_matrix_prior) @ X.T) + (sigma_rand**2) * np.eye(n_e)) 
     log_gen_term = np.log(gen_term)
 
     # phi_nc(X) takes only non-causal columns in X
     phi_nc_X = X[:,:causal_param_first_index]
-    nc_term = np.linalg.det(np.dot(np.dot(phi_nc_X.T, cov_matrix_prior_nc), phi_nc_X) + (sigma_rand**2) * np.eye(n_e))
+    nc_term = np.linalg.det(phi_nc_X @ (cov_matrix_prior_nc @ phi_nc_X.T) + (sigma_rand**2) * np.eye(n_e))
     log_nc_term = np.log(nc_term)
     eig = 0.5 * (log_gen_term - log_nc_term)
 
