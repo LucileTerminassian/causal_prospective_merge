@@ -73,19 +73,20 @@ if __name__ == '__main__':
     ### Bayesian update through candidate datasets
     sigma_cand = 1
     prior_hyperparameters_cand = {'beta_0': beta_post_host, 'sigma_0_sq': sigma_cand}
-    bayes_reg_cand = BayesianLinearRegression(prior_hyperparameters_cand)
 
     ## With candidate = mirror dataset
+    bayes_reg_mirror = BayesianLinearRegression(prior_hyperparameters_cand)
     X_mirror, Y_mirror = design_data_mirror.drop(columns=['Y']), design_data_mirror['Y']
-    post_mirror_parameters = bayes_reg.fit(X_mirror, Y_mirror)
+    post_mirror_parameters = bayes_reg_mirror.fit(X_mirror, Y_mirror)
 
     # Generate Y_post_mirror
     post_mirror_mean = post_mirror_parameters['posterior_mean'].flatten()  # Extract posterior mean
     Y_post_mirror = np.dot(X_mirror, post_mirror_mean) + np.random.normal(0, 1, len(X_mirror))  # Assuming standard deviation for Y_post_host is 1
 
     ## With candidate = cand2 dataset
+    bayes_reg_cand2 = BayesianLinearRegression(prior_hyperparameters_cand)
     X_cand2, Y_cand2 = design_data_cand2.drop(columns=['Y']), design_data_cand2['Y']
-    post_cand2_parameters = bayes_reg.fit(X_cand2, Y_cand2)
+    post_cand2_parameters = bayes_reg_cand2.fit(X_cand2, Y_cand2)
     
     # Generate Y_post_cand2
     post_cand2_mean = post_cand2_parameters['posterior_mean'].flatten()  # Extract posterior mean

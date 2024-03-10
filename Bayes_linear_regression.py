@@ -11,6 +11,20 @@ import pyro.distributions as dist
 from pyro.infer import MCMC, NUTS
 
 
+def posterior_mean(X, y, sigma_sq, S0_inv, m0):
+    
+    A = 1/sigma_sq * np.dot(X.T, X) + S0_inv
+    A_inv = np.linalg.inv(A)
+    b = 1/sigma_sq * np.dot(X.T, y) + np.dot(S0_inv, m0)
+    
+    return np.dot(A_inv, b)
+
+def posterior_covariance(X, sigma_sq, S0_inv):
+    
+    
+    return np.linalg.inv(1/sigma_sq * np.dot(X.T, X) + S0_inv)
+
+
 class BayesianLinearRegression:
 
     def __init__(self, prior_hyperparameters, model='linear_reg'):
@@ -43,14 +57,16 @@ class BayesianLinearRegression:
             raise ValueError("beta_0 should be a vector of length d.")
 
         sigma_sq_y = np.var(Y)
-        sigma_sq_inv_y = 1 / sigma_sq_y
+        # old sigma_sq_inv_y = 1 / sigma_sq_y
         sigma_0_sq_inv = 1 / sigma_0_sq
 
         # Calculate covariance matrix of the posterior distribution
-        cov_matrix_posterior = np.linalg.inv(sigma_sq_inv_y * np.dot(X.T, X) + sigma_0_sq_inv * np.eye(X.shape[1]))
+        # old cov_matrix_posterior = np.linalg.inv(sigma_sq_inv_y * np.dot(X.T, X) + sigma_0_sq_inv * np.eye(X.shape[1]))
+        cov_matrix_posterior = posterior_covariance(X, sigma_sq_y, sigma_0_sq_inv)
 
         # Calculate mean vector of the posterior distribution
-        beta_posterior = np.dot(np.dot(cov_matrix_posterior, X.T), Y) * sigma_sq_inv_y + np.dot(cov_matrix_posterior, beta_0)
+        # old beta_posterior = np.dot(np.dot(cov_matrix_posterior, X.T), Y) * sigma_sq_inv_y + np.dot(cov_matrix_posterior, beta_0)
+        beta_posterior = posterior_mean(X, Y, sigma_sq_y, sigma_0_sq_inv, beta_0)
 
         if sigma_sq_y == 0:
             raise ValueError("Variance of Y is zero. Cannot divide by zero.")

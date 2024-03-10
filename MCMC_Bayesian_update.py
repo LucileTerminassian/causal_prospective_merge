@@ -78,8 +78,4 @@ def MCMC_Bayesian_update (X, Y, model, mu_0, sigma_prior, sigma_rand_error=1, si
 
     return mcmc
 
-    def test1(X, Y, model, mu_0, sigma_prior, sigma_rand_error, 
-            n_mcmc = 100, warmup_steps = 20, max_tree_depth=5):
-        
-        conditioned_model = pyro.condition(model, data={"latent_variable": parameter_subset})
         

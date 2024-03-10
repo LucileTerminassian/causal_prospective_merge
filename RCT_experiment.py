@@ -113,12 +113,12 @@ def generate_design_matrix(data, power_x, power_x_t):
                 X_prime[f"T*{col}"] = T * (X[col] ** i)
     return X_prime
 
-def add_outcome(data, outcome_function):
+def add_outcome(data, outcome_function, scale):
     
     n = np.shape(data)[0]
     X = data.drop(columns=['T']).values
     T = data['T'].values
-    eps = np.random.normal(size=n)
+    eps = np.random.normal(size=n, scale=scale)
 
     Y = outcome_function(X, T, eps)
     data['Y'] = Y
