@@ -20,11 +20,12 @@ from MCMC_Bayesian_update import *
 from functools import partial
 
 def model_normal(X, Y, mu_0, sigma_prior, sigma_rand_error_fixed,sigma_rand_error):
-
+    
+    linear_combination = 0
     for i in range (len(mu_0)):
         coefficient_prior = dist.Normal(mu_0[i], sigma_prior)
         beta_coef = pyro.sample(f"beta_{i}", coefficient_prior)
-        linear_combination = X[:, i] * beta_coef
+        linear_combination += X[:, i] * beta_coef
     
     
     # Define a sigma prior for the random error
@@ -46,6 +47,8 @@ def model_normal(X, Y, mu_0, sigma_prior, sigma_rand_error_fixed,sigma_rand_erro
         
         # Condition the expected mean on the observed target y
         observation = pyro.sample("obs", outcome_dist, obs=Y)
+        # print(mean.shape)
+        # print(observation.shape)
 
 def MCMC_Bayesian_update(X_torch, Y_torch, model, mu_0, sigma_prior, sigma_rand_error=1, sigma_rand_error_fixed=True, 
             n_mcmc = 100, warmup_steps = 20, max_tree_depth=5):
@@ -64,6 +67,9 @@ def MCMC_Bayesian_update(X_torch, Y_torch, model, mu_0, sigma_prior, sigma_rand_
     mcmc = MCMC(kernel,
                     num_samples=n_mcmc,
                     warmup_steps= warmup_steps)
+    # Isbayes = MCMC(kernel,
+    #                 num_samples=n_mcmc,
+    #                 warmup_steps= warmup_steps)
 
 
     # Let's time our execution as well
