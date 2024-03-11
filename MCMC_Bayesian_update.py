@@ -17,8 +17,9 @@ from RCT_experiment import *
 from Bayes_linear_regression import *
 from plotting_functions import *
 from MCMC_Bayesian_update import *
+from functools import partial
 
-def model_normal(X, Y, mu_0, sigma_prior, sigma_rand_error_fixed= True,sigma_rand_error=1):
+def model_normal(X, Y, mu_0, sigma_prior, sigma_rand_error_fixed,sigma_rand_error):
 
     for i in range (len(mu_0)):
         coefficient_prior = dist.Normal(mu_0[i], sigma_prior)
@@ -46,11 +47,11 @@ def model_normal(X, Y, mu_0, sigma_prior, sigma_rand_error_fixed= True,sigma_ran
         # Condition the expected mean on the observed target y
         observation = pyro.sample("obs", outcome_dist, obs=Y)
 
-def MCMC_Bayesian_update (X, Y, model, mu_0, sigma_prior, sigma_rand_error=1, sigma_rand_error_fixed=True, 
+def MCMC_Bayesian_update(X_torch, Y_torch, model, mu_0, sigma_prior, sigma_rand_error=1, sigma_rand_error_fixed=True, 
             n_mcmc = 100, warmup_steps = 20, max_tree_depth=5):
 
-    X_torch = torch.tensor(X.values)
-    Y_torch = torch.tensor(Y.values)
+    # X_torch = torch.tensor(X.values)
+    # Y_torch = torch.tensor(Y.values)
 
     # Clear the parameter storage
     pyro.clear_param_store()
@@ -70,7 +71,7 @@ def MCMC_Bayesian_update (X, Y, model, mu_0, sigma_prior, sigma_rand_error=1, si
 
     # Run the sampler
     mcmc.run(X_torch, Y_torch, mu_0, 
-                sigma_prior, sigma_rand_error)
+                sigma_prior, sigma_rand_error,sigma_rand_error_fixed)
 
     end_time = time.time()
 
@@ -79,3 +80,20 @@ def MCMC_Bayesian_update (X, Y, model, mu_0, sigma_prior, sigma_rand_error=1, si
     return mcmc
 
         
+def retun_causal_samp_func_linear(X,Y,causal_param_first_index,mu_0,sigma_prior,sigma_rand_error,sigma_rand_error_fixed,
+                                  warmup_steps,max_tree_depth):
+    mu_0 = mu_0[:causal_param_first_index]
+
+    def causal_samp_func_linear(causal_param,n_non_causal_expectation):
+        Y_new = Y - (X[:,causal_param_first_index:] @ causal_param)
+        X_new = X[:,:causal_param_first_index]
+        # Y_new = torch.tensor(Y_new)
+        # X_new = torch.tensor(X_new)
+        mcmc_alg = MCMC_Bayesian_update(X_torch=X_new, Y_torch= Y_new, model =model_normal,
+                mu_0= mu_0, sigma_prior = sigma_prior, sigma_rand_error = sigma_rand_error,sigma_rand_error_fixed=sigma_rand_error_fixed,
+                n_mcmc = n_non_causal_expectation, warmup_steps = warmup_steps, max_tree_depth=max_tree_depth)
+
+
+        beta_nc_samples = pd.DataFrame(mcmc_alg.get_samples())
+        return beta_nc_samples
+    return causal_samp_func_linear

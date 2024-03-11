@@ -25,6 +25,8 @@ def plot_densities(y1, y2, y3, names, title):
 def predict_with_all_sampled_linear(beta_df, X):
     
     # Don't grab the last column, that is our estimate of the error standard deviation, "sigma"
-    coefficients = beta_df.values
-    
+    if type(beta_df) is pd.core.frame.DataFrame:
+        coefficients = beta_df.values
+    else:
+        coefficients = beta_df
     return coefficients @ X.T

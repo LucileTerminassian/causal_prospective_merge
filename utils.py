@@ -54,7 +54,7 @@ def log_posterior_predictive(y,y_pred_theta_samples, covariance):
         log_likelihood_list.append(multivariate_normal_log_likelihood(y, y_pred, covariance))
     return logsumexp(log_likelihood_list) - np.log(len(log_likelihood_list))
 
-def samples_in_EIG_form (Y_pred_vec, n_outer_expectation, m_inner_expectation):
+def predictions_in_EIG_obs_form(Y_pred_vec, n_outer_expectation, m_inner_expectation):
     
     """"Gets samples in the correct form for EIG computation
     Y_pred_vec: predictions from the model over many theta
@@ -71,33 +71,20 @@ def samples_in_EIG_form (Y_pred_vec, n_outer_expectation, m_inner_expectation):
              Y_pred_vec[ m_inner_expectation * i + n_outer_expectation: m_inner_expectation * (i+1) + n_outer_expectation]))
     return predictions_list
 
-def resampling_theta_non_causal (theta_samples, theta_sampling_function, n_non_causal_expectation, causal_param_first_index):
+def predictions_in_EIG_causal_form(pred_func, theta_samples, theta_sampling_function, n_non_causal_expectation, causal_param_first_index):
 
-    resampled_thetas = []
+    paired_predictions = []
 
     for theta in theta_samples:
         theta_causal = theta[causal_param_first_index:]
-        thetas_samples_non_causal = theta_sampling_function(theta_causal, n_non_causal_expectation)
-        resampled_thetas.append((theta, thetas_samples_non_causal))
+        thetas_samples_non_causal = theta_sampling_function(theta_causal, n_non_causal_expectation).values
+        predictions = [pred_func(np.concatenate([np.array(theta_noncausal),np.array(theta_causal)])) for theta_noncausal in thetas_samples_non_causal]
+        paired_predictions.append((pred_func(theta), predictions))
         
-    return resampled_thetas
-
-# def linear_theta_sampling(theta_causal, n_non_causal_expectation):
-
-    # theta_causal is one set of causal parameters
-    # thetas_samples_non_causal = []
-
-    #for i in range (n_non_causal_expectation):
-        # sample n_non_causal_expectation conditional on theta_causal
-        # append this to thetas_samples_non_causal
-    # return tuple (theta_causal, thetas_samples_non_causal)
-
-# JAKE write marginalization wrapping function ie computation of EIG_causal
+    return paired_predictions
 
 
-
-
-def compute_EIG_obs_from_samples(pred_list, sigma):
+def calc_posterior_predictive_entropy(pred_list, sigma):
     n_e = len(pred_list[0][0])
     covariance = sigma*np.eye((n_e))
     sample_list = []
@@ -107,7 +94,17 @@ def compute_EIG_obs_from_samples(pred_list, sigma):
         y_sample = mvn.rvs()
         sample_list.append(log_posterior_predictive(y_sample,y_pred_multiple,covariance))
 
-    return -(sum(sample_list)/len(sample_list)) - n_e/2 * (1 + np.log(2 * np.pi * sigma **2))
+    return -(sum(sample_list)/len(sample_list))
+
+def compute_EIG_causal_from_samples(pred_list_unpaired,pred_list_paired, sigma):
+    """" Function to calculate causal information gain"""
+    n_e = len(pred_list_unpaired[0][0])
+    return calc_posterior_predictive_entropy(pred_list_unpaired, sigma) - calc_posterior_predictive_entropy(pred_list_paired, sigma)
+
+
+def compute_EIG_obs_from_samples(pred_list, sigma):
+    n_e = len(pred_list[0][0])
+    return calc_posterior_predictive_entropy(pred_list, sigma) - n_e/2 * (1 + np.log(2 * np.pi * sigma **2))
 
 
 def compute_EIG_obs_closed_form(X, cov_matrix_prior, sigma_rand):
@@ -140,3 +137,4 @@ def compute_EIG_causal_closed_form(X, cov_matrix_prior, sigma_rand, causal_param
     eig = 0.5 * (log_gen_term - log_nc_term)
 
     return eig
+
