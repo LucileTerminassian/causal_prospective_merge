@@ -67,9 +67,7 @@ def MCMC_Bayesian_update(X_torch, Y_torch, model, mu_0, sigma_prior, sigma_rand_
     mcmc = MCMC(kernel,
                     num_samples=n_mcmc,
                     warmup_steps= warmup_steps)
-    # Isbayes = MCMC(kernel,
-    #                 num_samples=n_mcmc,
-    #                 warmup_steps= warmup_steps)
+
 
 
     # Let's time our execution as well

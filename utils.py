@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.stats import multivariate_normal
 from scipy.special import logsumexp
+import scipy.stats._covariance as cov
 
 def multivariate_normal_likelihood(data, mean, covariance):
     """
@@ -35,6 +36,7 @@ def multivariate_normal_log_likelihood(data, mean, covariance):
     log_likelihood = mvn.logpdf(data)
     return log_likelihood
 
+
 def log_posterior_predictive(y,y_pred_theta_samples, covariance):
     
     """
@@ -49,6 +51,8 @@ def log_posterior_predictive(y,y_pred_theta_samples, covariance):
     Returns:
     - log posterior predictive likelihood: A single point estimate of log(P(y|X,t)).
     """
+    n_e = len(y)
+    
     log_likelihood_list = []
     for y_pred in y_pred_theta_samples:
         log_likelihood_list.append(multivariate_normal_log_likelihood(y, y_pred, covariance))
@@ -86,7 +90,7 @@ def predictions_in_EIG_causal_form(pred_func, theta_samples, theta_sampling_func
 
 def calc_posterior_predictive_entropy(pred_list, sigma):
     n_e = len(pred_list[0][0])
-    covariance = sigma*np.eye((n_e))
+    covariance = cov.CovViaDiagonal(sigma*np.ones(n_e))
     sample_list = []
     
     for y_pred,y_pred_multiple in pred_list:
@@ -112,7 +116,7 @@ def compute_EIG_obs_closed_form(X, cov_matrix_prior, sigma_rand):
     n_e = len(X)
     det_term = np.linalg.det( X @ (np.linalg.inv(cov_matrix_prior) @ X.T) + (sigma_rand**2) * np.eye(n_e)) 
     log_det_term = np.log(det_term)
-    log_sigma_term = n_e * np.log(sigma_rand)
+    log_sigma_term = n_e * (np.log(sigma_rand))
     eig = 0.5 * log_det_term - log_sigma_term
 
     return eig
