@@ -30,3 +30,16 @@ def predict_with_all_sampled_linear(beta_df, X):
     else:
         coefficients = beta_df
     return coefficients @ X.T
+
+def plot_array(x, arr, names, title=False):
+
+    n_lines=np.shape(arr)[0]
+    plt.figure(figsize=(10, 6))  
+
+    for i in range (n_lines):
+        plt.plot(x, arr[i,:], label=names[i])
+    
+    if title:    
+        plt.title(title)
+    plt.legend()
+    plt.show()

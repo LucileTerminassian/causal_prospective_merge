@@ -13,11 +13,11 @@ from sklearn.neighbors import KernelDensity
 
 __name__ = '__main__'
 
-from RCT_experiment import *
-from Bayes_linear_regression import *
+from rct_data_generator import *
+from outcome_models import *
 from plotting_functions import *
-from MCMC_Bayesian_update import *
-from utils import *
+from mcmc_bayes_update import *
+from eig_comp_utils import *
 
 
 if __name__ == '__main__':
