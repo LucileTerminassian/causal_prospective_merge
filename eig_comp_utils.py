@@ -66,12 +66,12 @@ def predictions_in_EIG_obs_form(Y_pred_vec, n_outer_expectation, m_inner_expecta
     m_inner_expectation: number of samples for inner expectation
     """
 
-    if n_outer_expectation * m_inner_expectation != len(Y_pred_vec):
+    if n_outer_expectation * (m_inner_expectation+1) != len(Y_pred_vec):
         assert("n * m must be the length of the pred vector")
     predictions_list = []
 
     for i in range(n_outer_expectation):
-        predictions_list.append((Y_pred_vec[i], \
+        predictions_list.append((Y_pred_vec[i], 
              Y_pred_vec[ m_inner_expectation * i + n_outer_expectation: m_inner_expectation * (i+1) + n_outer_expectation]))
     return predictions_list
 
@@ -114,8 +114,7 @@ def compute_EIG_obs_from_samples(pred_list, sigma):
 def compute_EIG_obs_closed_form(X, cov_matrix_prior, sigma_rand):
 
     n_e = len(X)
-    det_term = np.linalg.det( X @ ((cov_matrix_prior) @ X.T) + (sigma_rand**2) * np.eye(n_e) )
-    log_det_term = np.log(det_term)
+    sign,log_det_term = np.linalg.slogdet( X @ ((cov_matrix_prior) @ X.T) + (sigma_rand**2) * np.eye(n_e) )
     log_sigma_term = n_e * (np.log(sigma_rand))
     eig = 0.5 * log_det_term - log_sigma_term
 
@@ -124,20 +123,17 @@ def compute_EIG_obs_closed_form(X, cov_matrix_prior, sigma_rand):
 def compute_EIG_causal_closed_form(X, cov_matrix_prior, sigma_rand, causal_param_first_index):
 
     n_e = len(X)
-    inv_cov_matrix_prior = np.linalg.inv(cov_matrix_prior)
     sigma_a = cov_matrix_prior[:causal_param_first_index, 0:causal_param_first_index]
     sigma_b = cov_matrix_prior[causal_param_first_index:, causal_param_first_index:]
     sigma_c = cov_matrix_prior[:causal_param_first_index, causal_param_first_index:]
     cov_matrix_prior_nc = sigma_b - np.dot(np.dot(sigma_c.T, np.linalg.inv(sigma_a) ) , sigma_c)
 
-    gen_term = np.linalg.det( X @ ((cov_matrix_prior) @ X.T) + (sigma_rand**2) * np.eye(n_e)) 
-    log_gen_term = np.log(gen_term)
+    sign,log_gen_term = np.linalg.slogdet( X @ ((cov_matrix_prior) @ X.T) + (sigma_rand**2) * np.eye(n_e) )
 
     # phi_nc(X) takes only non-causal columns in X
     phi_nc_X = X[:,:causal_param_first_index]
     
-    nc_term = np.linalg.det(phi_nc_X @ (cov_matrix_prior_nc @ phi_nc_X.T) + (sigma_rand**2) * np.eye(n_e))
-    log_nc_term = np.log(nc_term)
+    sign,log_nc_term = np.linalg.slogdet( phi_nc_X @ ((cov_matrix_prior_nc) @ phi_nc_X.T) + (sigma_rand**2) * np.eye(n_e) )
     eig = 0.5 * (log_gen_term - log_nc_term)
 
     return eig
