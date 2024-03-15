@@ -120,6 +120,11 @@ def compute_EIG_obs_closed_form(X, cov_matrix_prior, sigma_rand):
 
     return eig
 
+def compute_EIG_obs_closed_form_alt(X, cov_matrix_prior, sigma_rand):
+    sign, log_det_term_post = np.linalg.slogdet((1/sigma_rand**2)*X.T @ X + np.linalg.inv(cov_matrix_prior))
+    sign, log_det_term_prior = np.linalg.slogdet(np.linalg.inv(cov_matrix_prior))
+    return 1/2*log_det_term_post - 1/2* log_det_term_prior
+
 def compute_EIG_causal_closed_form(X, cov_matrix_prior, sigma_rand, causal_param_first_index):
 
     n_e = len(X)
