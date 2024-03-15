@@ -66,6 +66,39 @@ def generate_host_and_mirror(X, T, f_assigned_to_host, n_host, n_mirror, power_x
     
     return design_data_host, design_data_mirror
 
+def generate_host_and_exact_mirror(X, T, f_assigned_to_host, n_host, n_mirror, power_x, power_x_t, outcome_function, std_true_y):
+
+    n_global = len(X)
+    data_host = {'X0': [], 'X1': [], 'T': [] }
+    data_mirror = {'X0': [], 'X1': [], 'T': [] }
+    
+    for i in range(n_host):
+        proba_assigned_to_host = f_assigned_to_host(X.iloc[i]['X0'], X.iloc[i]['X1'], T[i], np.random.normal())
+        is_assigned_to_host = np.random.binomial(1, proba_assigned_to_host)
+        if is_assigned_to_host == 1:
+            if len(data_host['X0']) < n_host :
+                data_host['X0'].append(X.iloc[i]['X0'])
+                data_host['X1'].append(X.iloc[i]['X1'])
+                data_host['T'].append(T[i])
+
+    
+    data_mirror['X0'] = data_host['X0']
+    data_mirror['X1'] = data_host['X1']
+    complementary_treat = [1 if bit == 0 else 0 for bit in data_host['T']]
+    data_mirror['T'] = complementary_treat
+
+    data_host = pd.DataFrame(data_host)
+    data_mirror = pd.DataFrame(data_mirror)
+
+    design_data_host = generate_design_matrix(data_host, power_x, power_x_t)
+    design_data_mirror = generate_design_matrix(data_mirror, power_x, power_x_t)
+
+    design_data_host = add_outcome(design_data_host, outcome_function, std_true_y)
+    design_data_mirror = add_outcome(design_data_mirror, outcome_function, std_true_y)
+    
+    return design_data_host, design_data_mirror
+
+
 # Function to generate host2 data
 def generate_cand2(X, T, f_assigned_to_cand2, n_cand2, power_x, power_x_t, outcome_function, std_true_y):
    
