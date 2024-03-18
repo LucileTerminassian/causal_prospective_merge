@@ -1,3 +1,4 @@
+from typing import Callable, Tuple
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
@@ -6,9 +7,20 @@ from scipy.stats import entropy, gaussian_kde
 import sys
 
 
-def generate_rct(n_global, x_distributions):
+def generate_rct(
+    n_global: int, x_distributions: dict
+) -> Tuple[pd.DataFrame, np.ndarray]:
+    """
+    Args:
+        n_global: int, total numner of observations (treatment + no treatment combined)
+        x_distributions: dict of covariate distributions
+            e.g. {0: normal(1.0, 1.0), 1: normal(0.1, 1.5)}
+
+    Returns:
+        dataframe with covariates and np.ndarray of treatment assignment
+    """
     # Generate X
-    dim_x = len(x_distributions)
+    dim_x = len(x_distributions)  # number of covariates
     dict_x = {}
     for i in range(dim_x):
         x = x_distributions[i]
@@ -28,24 +40,24 @@ def sigmoid(x):
 
 # Function to generate host and mirror data
 def generate_host_and_mirror(
-    X,
-    T,
-    f_assigned_to_host,
-    n_host,
-    n_mirror,
+    X: pd.DataFrame,  # covariates
+    T: np.ndarray,  # treatment assignment
+    f_assigned_to_host: Callable,  # ??
+    n_host: int,  # ??
+    n_mirror: int,  # ??
     power_x,
     power_x_t,
-    outcome_function,
-    std_true_y,
-):
+    outcome_function: Callable,
+    std_true_y: float,  # observation noise
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    # WHAT IS HAPPENING HERE??
 
-    n_global = len(X)
+    n_global = len(X)  # total number of observations??
     data_host = {"X0": [], "X1": [], "T": []}
     data_mirror = {"X0": [], "X1": [], "T": []}
 
     if n_host + n_mirror > n_global:
-        print("n_host + n_mirror > n_rct")
-        return
+        raise ValueError("n_host + n_mirror > n_rct")
 
     for i in range(n_global):
         proba_assigned_to_host = f_assigned_to_host(
@@ -82,6 +94,7 @@ def generate_host_and_mirror(
     return design_data_host, design_data_mirror
 
 
+# THIS ISNT USED, IS IT?
 def generate_host_and_exact_mirror(
     X,
     T,
@@ -128,15 +141,21 @@ def generate_host_and_exact_mirror(
 
 # Function to generate host2 data
 def generate_cand2(
-    X, T, f_assigned_to_cand2, n_cand2, power_x, power_x_t, outcome_function, std_true_y
-):
+    X: pd.DataFrame,
+    T: np.ndarray,
+    f_assigned_to_cand2: Callable,
+    n_cand2: int,
+    power_x,
+    power_x_t,
+    outcome_function: Callable,
+    std_true_y: float,
+) -> pd.DataFrame:
 
     data_cand2 = {"X0": [], "X1": [], "T": []}
-    n_global = len(X)
+    n_global = len(X)  # n_rct
 
     if n_cand2 > n_global:
-        print("n_cand2 > n_rct")
-        return
+        raise ValueError("n_host + n_mirror > n_rct")
 
     for i in range(n_global):
         proba_assigned_to_cand2 = f_assigned_to_cand2(
@@ -164,7 +183,8 @@ def generate_design_matrix(data, power_x, power_x_t):
     X = data.drop(columns=["T"])
     T = data["T"]
 
-    # Initialize a dataframe to hold the design matrix with intercept column filled with ones
+    # Initialize a dataframe to hold the design matrix with intercept column
+    # filled with ones
     n, d = np.shape(X)
     X_prime = pd.DataFrame(np.ones((n, d * power_x + d * power_x_t + 2)))
 
@@ -210,9 +230,11 @@ def generate_design_matrix(data, power_x, power_x_t):
     return X_prime
 
 
-def add_outcome(data, outcome_function, scale):
+def add_outcome(
+    data: pd.DataFrame, outcome_function: Callable, scale: float
+) -> pd.DataFrame:
 
-    n = np.shape(data)[0]
+    n = data.shape[0]
     X = data.drop(columns=["T"]).values
     T = data["T"].values
     eps = np.random.normal(size=n, scale=scale)

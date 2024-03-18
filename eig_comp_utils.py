@@ -39,7 +39,6 @@ def multivariate_normal_log_likelihood(data, mean, covariance):
 
 
 def log_posterior_predictive(y, y_pred_theta_samples, covariance):
-
     """
     Compute the log likelihood of the posterior predictive  .
 
@@ -63,7 +62,6 @@ def log_posterior_predictive(y, y_pred_theta_samples, covariance):
 
 
 def predictions_in_EIG_obs_form(Y_pred_vec, n_outer_expectation, m_inner_expectation):
-
     """ "Gets samples in the correct form for EIG computation
     Y_pred_vec: predictions from the model over many theta
     n_outer_expectation: number of samples for outer expectation
@@ -184,8 +182,7 @@ def compute_EIG_causal_closed_form(
     phi_nc_X = X[:, :causal_param_first_index]
 
     sign, log_nc_term = np.linalg.slogdet(
-        phi_nc_X @ ((cov_matrix_prior_nc) @ phi_nc_X.T)
-        + (sigma_rand**2) * np.eye(n_e)
+        phi_nc_X @ ((cov_matrix_prior_nc) @ phi_nc_X.T) + (sigma_rand**2) * np.eye(n_e)
     )
     eig = 0.5 * (log_gen_term - log_nc_term)
 
