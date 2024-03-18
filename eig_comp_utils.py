@@ -37,7 +37,7 @@ def multivariate_normal_log_likelihood(data, mean, covariance):
     return log_likelihood
 
 
-def log_posterior_predictive(y,y_pred_theta_samples, covariance):
+def log_posterior_predictive(y,y_pred_theta_samples, covariance,generating_prediction=None):
     
     """
     Compute the log likelihood of the posterior predictive  .
@@ -54,6 +54,8 @@ def log_posterior_predictive(y,y_pred_theta_samples, covariance):
     n_e = len(y)
     
     log_likelihood_list = []
+    if generating_prediction is not None:
+        log_likelihood_list.append(multivariate_normal_log_likelihood(y, generating_prediction, covariance))
     for y_pred in y_pred_theta_samples:
         log_likelihood_list.append(multivariate_normal_log_likelihood(y, y_pred, covariance))
     return logsumexp(log_likelihood_list) - np.log(len(log_likelihood_list))
@@ -88,7 +90,7 @@ def predictions_in_EIG_causal_form(pred_func, theta_samples, theta_sampling_func
     return paired_predictions
 
 
-def calc_posterior_predictive_entropy(pred_list, sigma):
+def calc_posterior_predictive_entropy(pred_list, sigma,lower=False):
     n_e = len(pred_list[0][0])
     covariance = cov.CovViaDiagonal(sigma**2*np.ones(n_e))
     sample_list = []
@@ -96,8 +98,10 @@ def calc_posterior_predictive_entropy(pred_list, sigma):
     for y_pred,y_pred_multiple in pred_list:
         mvn = multivariate_normal(mean=y_pred, cov=covariance)
         y_sample = mvn.rvs()
-        sample_list.append(log_posterior_predictive(y_sample,y_pred_multiple,covariance))
-
+        if lower:
+            sample_list.append(log_posterior_predictive(y_sample,y_pred_multiple,covariance,y_pred))
+        else:
+            sample_list.append(log_posterior_predictive(y_sample,y_pred_multiple,covariance,None))
     return -(sum(sample_list)/len(sample_list))
 
 def compute_EIG_causal_from_samples(pred_list_unpaired,pred_list_paired, sigma):
@@ -106,9 +110,25 @@ def compute_EIG_causal_from_samples(pred_list_unpaired,pred_list_paired, sigma):
     return calc_posterior_predictive_entropy(pred_list_unpaired, sigma) - calc_posterior_predictive_entropy(pred_list_paired, sigma)
 
 
-def compute_EIG_obs_from_samples(pred_list, sigma):
+def compute_EIG_obs_from_samples(pred_list, sigma,lower=False):
     n_e = len(pred_list[0][0])
-    return calc_posterior_predictive_entropy(pred_list, sigma) - n_e/2 * (1 + np.log(2 * np.pi * sigma **2))
+    return calc_posterior_predictive_entropy(pred_list, sigma,lower) - n_e/2 * (1 + np.log(2 * np.pi * sigma **2))
+
+
+def compute_EIG_obs_from_samples_alt(pred_list, sigma,lower=False):
+    n_e = len(pred_list[0][0])
+    covariance = cov.CovViaDiagonal(sigma**2*np.ones(n_e))
+    sample_list = []
+
+    for y_pred,y_pred_multiple in pred_list:
+        mvn = multivariate_normal(mean=y_pred, cov=covariance)
+        y_sample = mvn.rvs()
+        if lower:
+            sample_list.append(multivariate_normal_log_likelihood(y_sample,y_pred,covariance)-log_posterior_predictive(y_sample,y_pred_multiple,covariance,y_pred))
+        else:
+            sample_list.append(multivariate_normal_log_likelihood(y_sample,y_pred,covariance)-log_posterior_predictive(y_sample,y_pred_multiple,covariance,None))
+    return (sum(sample_list)/len(sample_list))
+    
 
 
 def compute_EIG_obs_closed_form(X, cov_matrix_prior, sigma_rand):
