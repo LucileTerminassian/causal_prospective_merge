@@ -83,7 +83,7 @@ def predictions_in_EIG_causal_form(pred_func, theta_samples, theta_sampling_func
 
     for theta in theta_samples:
         theta_causal = theta[causal_param_first_index:]
-        thetas_samples_non_causal = theta_sampling_function(theta_causal, n_non_causal_expectation).values
+        thetas_samples_non_causal = theta_sampling_function(theta_causal, n_non_causal_expectation)
         predictions = [pred_func(np.concatenate([np.array(theta_noncausal),np.array(theta_causal)])) for theta_noncausal in thetas_samples_non_causal]
         paired_predictions.append((pred_func(theta), predictions))
         
@@ -91,7 +91,7 @@ def predictions_in_EIG_causal_form(pred_func, theta_samples, theta_sampling_func
 
 
 def calc_posterior_predictive_entropy(pred_list, sigma,lower=False):
-    n_e = len(pred_list[0]) #old len(pred_list[0][0]) 
+    n_e = len(pred_list[0][0]) #old len(pred_list[0][0]) 
     covariance = cov.CovViaDiagonal(sigma**2*np.ones(n_e))
     sample_list = []
     
@@ -106,7 +106,7 @@ def calc_posterior_predictive_entropy(pred_list, sigma,lower=False):
 
 def compute_EIG_causal_from_samples(pred_list_unpaired,pred_list_paired, sigma):
     """" Function to calculate causal information gain"""
-    n_e = len(pred_list_unpaired[0]) #old len(pred_list_unpaired[0][0]) 
+    n_e = len(pred_list_unpaired[0][0]) #old len(pred_list_unpaired[0][0]) 
     return calc_posterior_predictive_entropy(pred_list_unpaired, sigma) - calc_posterior_predictive_entropy(pred_list_paired, sigma)
 
 
