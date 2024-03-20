@@ -84,6 +84,7 @@ def MCMC_Bayesian_update(X_torch, Y_torch, model, mu_0, sigma_prior, sigma_rand_
 def return_causal_samp_func_linear(X,Y,causal_param_first_index,mu_0,sigma_prior,sigma_rand_error,sigma_rand_error_fixed,
                                   warmup_steps,max_tree_depth):
     mu_0 = mu_0[:causal_param_first_index]
+    #jake
 
     def causal_samp_func_linear(causal_param,n_non_causal_expectation):
         Y_new = Y - (X[:,causal_param_first_index:] @ causal_param)

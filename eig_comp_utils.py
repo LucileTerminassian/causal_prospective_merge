@@ -91,7 +91,7 @@ def predictions_in_EIG_causal_form(pred_func, theta_samples, theta_sampling_func
 
 
 def calc_posterior_predictive_entropy(pred_list, sigma,lower=False):
-    n_e = len(pred_list[0][0])
+    n_e = len(pred_list[0]) #old len(pred_list[0][0]) 
     covariance = cov.CovViaDiagonal(sigma**2*np.ones(n_e))
     sample_list = []
     
@@ -106,17 +106,17 @@ def calc_posterior_predictive_entropy(pred_list, sigma,lower=False):
 
 def compute_EIG_causal_from_samples(pred_list_unpaired,pred_list_paired, sigma):
     """" Function to calculate causal information gain"""
-    n_e = len(pred_list_unpaired[0][0])
+    n_e = len(pred_list_unpaired[0]) #old len(pred_list_unpaired[0][0]) 
     return calc_posterior_predictive_entropy(pred_list_unpaired, sigma) - calc_posterior_predictive_entropy(pred_list_paired, sigma)
 
 
 def compute_EIG_obs_from_samples(pred_list, sigma,lower=False):
-    n_e = len(pred_list[0][0])
+    n_e = len(pred_list[0]) 
     return calc_posterior_predictive_entropy(pred_list, sigma,lower) - n_e/2 * (1 + np.log(2 * np.pi * sigma **2))
 
 
 def compute_EIG_obs_from_samples_alt(pred_list, sigma,lower=False):
-    n_e = len(pred_list[0][0])
+    n_e = len(pred_list[0][0]) #old len(pred_list[0][0]) 
     covariance = cov.CovViaDiagonal(sigma**2*np.ones(n_e))
     sample_list = []
 
@@ -134,6 +134,7 @@ def compute_EIG_obs_from_samples_alt(pred_list, sigma,lower=False):
 def compute_EIG_obs_closed_form(X, cov_matrix_prior, sigma_rand):
 
     n_e = len(X)
+
     sign,log_det_term = np.linalg.slogdet( X @ ((cov_matrix_prior) @ X.T) + (sigma_rand**2) * np.eye(n_e) )
     log_sigma_term = n_e * (np.log(sigma_rand))
     eig = 0.5 * log_det_term - log_sigma_term

@@ -26,9 +26,14 @@ def sigmoid(x):
 # Function to generate host and mirror data
 def generate_host_and_mirror(X, T, f_assigned_to_host, n_host, n_mirror, power_x, power_x_t, outcome_function, std_true_y):
 
-    n_global = len(X)
-    data_host = {'X0': [], 'X1': [], 'T': [] }
-    data_mirror = {'X0': [], 'X1': [], 'T': [] }
+    n_global, d_global = np.shape(X)[0], np.shape(X)[1]
+    # Initialize dictionaries
+    data_host = {'X' + str(i): [] for i in range(d_global)}
+    data_mirror = {'X' + str(i): [] for i in range(d_global)}
+
+    # Add 'T' key to each dictionary
+    data_host['T'] = []
+    data_mirror['T'] = []
 
     if n_host + n_mirror > n_global:
         print('n_host + n_mirror > n_rct')
@@ -39,8 +44,8 @@ def generate_host_and_mirror(X, T, f_assigned_to_host, n_host, n_mirror, power_x
         is_assigned_to_host = np.random.binomial(1, proba_assigned_to_host)
         if is_assigned_to_host == 1:
             if len(data_host['X0']) < n_host :
-                data_host['X0'].append(X.iloc[i]['X0'])
-                data_host['X1'].append(X.iloc[i]['X1'])
+                for j in range(d_global):
+                    data_host['X' + str(j)].append(X.iloc[i]['X' + str(j)])
                 data_host['T'].append(T[i])
             else:
                 if len(data_mirror['X0']) == n_mirror:
@@ -48,44 +53,12 @@ def generate_host_and_mirror(X, T, f_assigned_to_host, n_host, n_mirror, power_x
 
         else:
             if len(data_mirror['X0']) < n_mirror :
-                data_mirror['X0'].append(X.iloc[i]['X0'])
-                data_mirror['X1'].append(X.iloc[i]['X1'])
+                for j in range(d_global):
+                    data_mirror['X' + str(j)].append(X.iloc[i]['X' + str(j)])
                 data_mirror['T'].append(T[i])
             else:
                 if len(data_mirror['X0']) == n_mirror:
                     break
-    
-    data_host = pd.DataFrame(data_host)
-    data_mirror = pd.DataFrame(data_mirror)
-
-    design_data_host = generate_design_matrix(data_host, power_x, power_x_t)
-    design_data_mirror = generate_design_matrix(data_mirror, power_x, power_x_t)
-
-    design_data_host = add_outcome(design_data_host, outcome_function, std_true_y)
-    design_data_mirror = add_outcome(design_data_mirror, outcome_function, std_true_y)
-    
-    return design_data_host, design_data_mirror
-
-def generate_host_and_exact_mirror(X, T, f_assigned_to_host, n_host, n_mirror, power_x, power_x_t, outcome_function, std_true_y):
-
-    n_global = len(X)
-    data_host = {'X0': [], 'X1': [], 'T': [] }
-    data_mirror = {'X0': [], 'X1': [], 'T': [] }
-    
-    for i in range(n_host):
-        proba_assigned_to_host = f_assigned_to_host(X.iloc[i]['X0'], X.iloc[i]['X1'], T[i], np.random.normal())
-        is_assigned_to_host = np.random.binomial(1, proba_assigned_to_host)
-        if is_assigned_to_host == 1:
-            if len(data_host['X0']) < n_host :
-                data_host['X0'].append(X.iloc[i]['X0'])
-                data_host['X1'].append(X.iloc[i]['X1'])
-                data_host['T'].append(T[i])
-
-    
-    data_mirror['X0'] = data_host['X0']
-    data_mirror['X1'] = data_host['X1']
-    complementary_treat = [1 if bit == 0 else 0 for bit in data_host['T']]
-    data_mirror['T'] = complementary_treat
 
     data_host = pd.DataFrame(data_host)
     data_mirror = pd.DataFrame(data_mirror)
@@ -97,13 +70,50 @@ def generate_host_and_exact_mirror(X, T, f_assigned_to_host, n_host, n_mirror, p
     design_data_mirror = add_outcome(design_data_mirror, outcome_function, std_true_y)
     
     return design_data_host, design_data_mirror
+
+# def generate_host_and_exact_mirror(X, T, f_assigned_to_host, n_host, n_mirror, power_x, power_x_t, outcome_function, std_true_y):
+
+#     n_global = len(X)
+#     data_host = {'X0': [], 'X1': [], 'T': [] }
+#     data_mirror = {'X0': [], 'X1': [], 'T': [] }
+    
+#     for i in range(n_host):
+#         proba_assigned_to_host = f_assigned_to_host(X.iloc[i]['X0'], X.iloc[i]['X1'], T[i], np.random.normal())
+#         is_assigned_to_host = np.random.binomial(1, proba_assigned_to_host)
+#         if is_assigned_to_host == 1:
+#             if len(data_host['X0']) < n_host :
+#                 data_host['X0'].append(X.iloc[i]['X0'])
+#                 data_host['X1'].append(X.iloc[i]['X1'])
+#                 data_host['T'].append(T[i])
+
+    
+#     data_mirror['X0'] = data_host['X0']
+#     data_mirror['X1'] = data_host['X1']
+#     complementary_treat = [1 if bit == 0 else 0 for bit in data_host['T']]
+#     data_mirror['T'] = complementary_treat
+
+#     data_host = pd.DataFrame(data_host)
+#     data_mirror = pd.DataFrame(data_mirror)
+
+#     design_data_host = generate_design_matrix(data_host, power_x, power_x_t)
+#     design_data_mirror = generate_design_matrix(data_mirror, power_x, power_x_t)
+
+#     design_data_host = add_outcome(design_data_host, outcome_function, std_true_y)
+#     design_data_mirror = add_outcome(design_data_mirror, outcome_function, std_true_y)
+    
+#     return design_data_host, design_data_mirror
 
 
 # Function to generate host2 data
 def generate_cand2(X, T, f_assigned_to_cand2, n_cand2, power_x, power_x_t, outcome_function, std_true_y):
    
-    data_cand2 = {'X0': [], 'X1': [], 'T': []}
-    n_global = len(X)
+    n_global, d_global = np.shape(X)[0], np.shape(X)[1]
+    # Initialize dictionaries
+    data_cand2 = {'X' + str(i): [] for i in range(d_global)}
+
+    # Add 'T' key to each dictionary
+    data_cand2['T'] = []
+
 
     if n_cand2 > n_global:
         print('n_cand2 > n_rct')
@@ -114,8 +124,8 @@ def generate_cand2(X, T, f_assigned_to_cand2, n_cand2, power_x, power_x_t, outco
         is_assigned_to_cand2 = np.random.binomial(1, proba_assigned_to_cand2)
         if is_assigned_to_cand2 == 1:
             if len(data_cand2['X0']) < n_cand2 :
-                data_cand2['X0'].append(X.iloc[i]['X0'])
-                data_cand2['X1'].append(X.iloc[i]['X1'])
+                for j in range(d_global):
+                    data_cand2['X' + str(j)].append(X.iloc[i]['X' + str(j)])
                 data_cand2['T'].append(T[i])
             else:
                 break
@@ -175,6 +185,7 @@ def generate_design_matrix(data, power_x, power_x_t):
                 X_prime[f"T*{col}**{i}"] = T * (X[col] ** i)
             else:
                 X_prime[f"T*{col}"] = T * (X[col] ** i)
+
     return X_prime
 
 def add_outcome(data, outcome_function, scale):
