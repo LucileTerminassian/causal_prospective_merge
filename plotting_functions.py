@@ -32,7 +32,7 @@ def predict_with_all_sampled_linear(beta_df, X):
         coefficients = beta_df
     return coefficients @ X.T
 
-def plot_array(x, arr, axis_names, names, text=False, title=False, save=False):
+def plot_array(dict_additional_plots, x, arr, axis_names, names, text=False, title=False, save=False):
 
     n_lines=np.shape(arr)[0]
     plt.figure(figsize=(10, 6))  
@@ -45,6 +45,19 @@ def plot_array(x, arr, axis_names, names, text=False, title=False, save=False):
                 plt.plot(x, arr[i,:], color='blue')
             if i % 2 == 1:
                 plt.plot(x, arr[i,:], color='orange') 
+    
+    if dict_additional_plots['Exact complementary']:
+        complementary = dict_additional_plots['Exact complementary']
+        plt.plot(x, complementary, label='Exact complementary')
+    if dict_additional_plots['Exact twin']:
+        twin = dict_additional_plots['Exact twin']
+        plt.plot(x, twin, label='Exact twin')
+    if dict_additional_plots['Exact twin treated']:
+        twin_treated = dict_additional_plots['Exact twin treated']
+        plt.plot(x, twin_treated, label='Exact twin treated')
+    if dict_additional_plots['Exact twin untreated']:
+        twin_untreated = dict_additional_plots['Exact twin untreated']
+        plt.plot(x, twin_untreated, label='Exact twin untreated')
     
     if title:    
         plt.title(title)
