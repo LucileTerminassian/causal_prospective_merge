@@ -263,8 +263,8 @@ def eig_from_samples_varying_sample_size(data_parameters, sigma_rand_error, prio
         pred_func_mirror = lambda beta: beta @ (X_mirror).T
         pred_func_cand2 = lambda beta: beta @ (X_cand2).T
 
-        pred_in_causal_form_mirror = predictions_in_EIG_causal_form(pred_func=pred_func_mirror, theta_samples=beta_post_host_samples, theta_sampling_function=sample_func,n_non_causal_expectation= n_non_causal_expectation,causal_param_first_index= causal_param_first_index)
-        pred_in_causal_form_cand2 = predictions_in_EIG_causal_form(pred_func=pred_func_cand2, theta_samples=beta_post_host_samples, theta_sampling_function=sample_func,n_non_causal_expectation= n_non_causal_expectation,causal_param_first_index= causal_param_first_index)
+        pred_in_causal_form_mirror = predictions_in_EIG_causal_form(pred_func=pred_func_mirror, theta_samples=beta_post_host_samples[:n_causal_outer_exp], theta_sampling_function=sample_func,n_non_causal_expectation= n_non_causal_expectation,causal_param_first_index= causal_param_first_index)
+        pred_in_causal_form_cand2 = predictions_in_EIG_causal_form(pred_func=pred_func_cand2, theta_samples=beta_post_host_samples[:n_causal_outer_exp], theta_sampling_function=sample_func,n_non_causal_expectation= n_non_causal_expectation,causal_param_first_index= causal_param_first_index)
 
         print('eig_caus')
         
