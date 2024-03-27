@@ -37,7 +37,7 @@ def multivariate_normal_log_likelihood(data, mean, covariance):
     return log_likelihood
 
 
-def log_posterior_predictive(y,y_pred_theta_samples, covariance,generating_prediction=None):
+def log_posterior_predictive(y, y_pred_theta_samples, covariance, generating_prediction=None):
     
     """
     Compute the log likelihood of the posterior predictive  .

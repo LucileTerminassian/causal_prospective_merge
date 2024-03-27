@@ -238,18 +238,16 @@ def eig_from_samples_varying_sample_size(data_parameters, sigma_rand_error, prio
         X_mirror_arr, X_cand2_arr = X_mirror.values, X_cand2.values
         X_torch, Y_torch = torch.tensor(X_host.values), torch.tensor(Y_host.values)
 
-        print('pred_obs')
-
         Y_pred_mirror = predict_with_all_sampled_linear(beta_post_host_samples, X_mirror_arr)
         pred_list_mirror = predictions_in_EIG_obs_form(Y_pred_mirror, n_samples_for_expectation, m_samples_for_expectation)   
 
         Y_pred_cand2 = predict_with_all_sampled_linear(beta_post_host_samples, X_cand2_arr)
         pred_list_cand2 = predictions_in_EIG_obs_form(Y_pred_cand2, n_samples_for_expectation, m_samples_for_expectation)  
-
-        print('eig_obs')
         
         EIG_obs_one_n_mirror = compute_EIG_obs_from_samples(pred_list_mirror, sigma_rand_error)
         EIG_obs_one_n_cand2 = compute_EIG_obs_from_samples(pred_list_cand2, sigma_rand_error)
+        print('EIG_obs_one_n_mirror is '+str(EIG_obs_one_n_mirror))
+
 
         EIG_obs_samples_mirror.append(EIG_obs_one_n_mirror)    
         EIG_obs_samples_cand2.append(EIG_obs_one_n_cand2)
@@ -258,16 +256,14 @@ def eig_from_samples_varying_sample_size(data_parameters, sigma_rand_error, prio
 
         sample_func = bayes_reg.return_conditional_sample_function(causal_param_first_index)
 
-        print('pred_caus')
-        
+
         pred_func_mirror = lambda beta: beta @ (X_mirror).T
         pred_func_cand2 = lambda beta: beta @ (X_cand2).T
 
         pred_in_causal_form_mirror = predictions_in_EIG_causal_form(pred_func=pred_func_mirror, theta_samples=beta_post_host_samples[:n_causal_outer_exp], theta_sampling_function=sample_func,n_non_causal_expectation= n_non_causal_expectation,causal_param_first_index= causal_param_first_index)
         pred_in_causal_form_cand2 = predictions_in_EIG_causal_form(pred_func=pred_func_cand2, theta_samples=beta_post_host_samples[:n_causal_outer_exp], theta_sampling_function=sample_func,n_non_causal_expectation= n_non_causal_expectation,causal_param_first_index= causal_param_first_index)
 
-        print('eig_caus')
-        
+
         EIG_caus_one_n_mirror = compute_EIG_causal_from_samples(pred_list_mirror,pred_in_causal_form_mirror, sigma_rand_error)
         EIG_caus_one_n_cand2 = compute_EIG_causal_from_samples(pred_list_cand2,pred_in_causal_form_cand2, sigma_rand_error)
 
