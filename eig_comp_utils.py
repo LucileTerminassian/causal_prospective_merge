@@ -111,7 +111,7 @@ def compute_EIG_causal_from_samples(pred_list_unpaired,pred_list_paired, sigma):
 
 
 def compute_EIG_obs_from_samples(pred_list, sigma,lower=False):
-    n_e = len(pred_list[0]) 
+    n_e = len(pred_list[0][0]) 
     return calc_posterior_predictive_entropy(pred_list, sigma,lower) - n_e/2 * (1 + np.log(2 * np.pi * sigma **2))
 
 

@@ -9,6 +9,8 @@ torch.set_default_tensor_type(torch.FloatTensor) # set the default to float32
 import pyro
 import pyro.distributions as dist
 from pyro.infer import MCMC, NUTS
+from eig_comp_utils import compute_EIG_causal_closed_form,compute_EIG_obs_closed_form,compute_EIG_causal_from_samples,compute_EIG_obs_from_samples,predictions_in_EIG_causal_form,predictions_in_EIG_obs_form
+
 
 
 def posterior_mean(X, y,sigma_sq, cov_posterior_inv):
@@ -19,7 +21,7 @@ def posterior_mean(X, y,sigma_sq, cov_posterior_inv):
 def posterior_covariance_inv(X, sigma_sq, S0_inv):
     
     
-    return (1/sigma_sq * np.dot(X.T, X) + S0_inv)
+    return (1/sigma_sq * X.T @ X + S0_inv)
 
 
 class BayesianLinearRegression:
@@ -31,7 +33,11 @@ class BayesianLinearRegression:
         self.sigma_0_sq = self.prior_hyperparameters['sigma_0_sq']
         self.inv_cov = self.prior_hyperparameters['inv_cov_0']
         self.beta = self.prior_hyperparameters['beta_0']
-        self.cov = np.linalg.inv(self.inv_cov)
+        self.causal_index = None
+        if type(self.inv_cov) == torch.Tensor:
+            self.cov = torch.inverse(self.inv_cov)
+        else:
+            self.cov = np.linalg.inv(self.inv_cov)
 
     def _check_prior_hyperparameters(self):
         
@@ -59,15 +65,17 @@ class BayesianLinearRegression:
         sigma_0_sq = self.prior_hyperparameters['sigma_0_sq']
         inv_cov_0 = self.prior_hyperparameters['inv_cov_0']
         beta_0 = self.prior_hyperparameters['beta_0']
-        if beta_0 is None or len(beta_0) != np.shape(X)[1]:
+        if beta_0 is None or len(beta_0) != X.shape[1]:
             raise ValueError("beta_0 should be a vector of length d.")
 
 
         # Calculate covariance matrix of the posterior distribution
         # old cov_matrix_posterior = np.linalg.inv(sigma_sq_inv_y * np.dot(X.T, X) + sigma_0_sq_inv * np.eye(X.shape[1]))
         inv_cov_matrix_posterior = posterior_covariance_inv(X, self.sigma_0_sq,self.inv_cov)
-
-        cov_matrix_posterior = np.linalg.inv(inv_cov_matrix_posterior)
+        if type(inv_cov_matrix_posterior) ==torch.Tensor:
+            cov_matrix_posterior = torch.inverse(inv_cov_matrix_posterior)
+        else:    
+            cov_matrix_posterior = np.linalg.inv(inv_cov_matrix_posterior)
 
         # Calculate mean vector of the posterior distribution
         # old beta_posterior = np.dot(np.dot(cov_matrix_posterior, X.T), Y) * sigma_sq_inv_y + np.dot(cov_matrix_posterior, beta_0)
@@ -91,6 +99,9 @@ class BayesianLinearRegression:
         mvn = multivariate_normal(mean=self.beta, cov=self.cov)
         return mvn.rvs(n_samples)
     
+    def set_causal_index(self,causal_index):
+        self.causal_index = causal_index
+        
     def return_conditional_sample_function(self, conditioning_index,condition_after=True):
 
         """"Returns a function to sample from the conditional posterior"""
@@ -106,17 +117,43 @@ class BayesianLinearRegression:
         else:
             conditional_cov = sigma_b - sigma_c.T @ sigma_b @ sigma_c
         
-
+            
         def conditional_sampling_func(conditioning_vec,n_samples):
+            if type(self.inv_cov) == torch.Tensor:
+                if condition_after:
+                    conditional_mean =  self.beta[:conditioning_index] + sigma_c @ (torch.inverse(sigma_b)@  (conditioning_vec - self.beta[conditioning_index:]))
+                else:
+                    conditional_mean = self.beta[conditioning_index:] + sigma_c.T @ (torch.inverse(sigma_a)@  (conditioning_vec - self.beta[:conditioning_index]))
 
-            if condition_after:
-                conditional_mean =  self.beta[:conditioning_index] + sigma_c @ (np.linalg.inv(sigma_b)@  (conditioning_vec - self.beta[conditioning_index:]))
+                mvn = multivariate_normal(mean=conditional_mean, cov=conditional_cov)
+
+                return mvn.rvs(n_samples)
             else:
-                conditional_mean = self.beta[conditioning_index:] + sigma_c.T @ (np.linalg.inv(sigma_a)@  (conditioning_vec - self.beta[:conditioning_index]))
+                if condition_after:
+                    conditional_mean =  self.beta[:conditioning_index] + sigma_c @ (np.linalg.inv(sigma_b)@  (conditioning_vec - self.beta[conditioning_index:]))
+                else:
+                    conditional_mean = self.beta[conditioning_index:] + sigma_c.T @ (np.linalg.inv(sigma_a)@  (conditioning_vec - self.beta[:conditioning_index]))
 
-            mvn = multivariate_normal(mean=conditional_mean, cov=conditional_cov)
+                mvn = multivariate_normal(mean=conditional_mean, cov=conditional_cov)
 
-            return mvn.rvs(n_samples)
+                return mvn.rvs(n_samples)
     
         return conditional_sampling_func
-        
+    
+    def closed_form_obs_EIG(self,X):
+            return compute_EIG_obs_closed_form(X, self.cov, self.sigma_0_sq**(1/2))
+    
+    def closed_form_causal_EIG(self,X):
+        if self.causal_index is None:
+            raise ValueError("Must set causal index")
+        return compute_EIG_causal_closed_form(X, self.cov, self.sigma_0_sq**(1/2), self.causal_index)
+    
+    def samples_obs_EIG(self,X,samples_outer_expectation,samples_inner_expectation):
+            return compute_EIG_obs_closed_form(X, self.cov, self.sigma_0_sq**(1/2))
+    
+    def samples_causal_EIG(self,X,n_samples_outer_expectation,n_samples_inner_expectation):
+            n_samples = n_samples_outer_expectation*(n_samples_inner_expectation+1)
+            posterior_samples = self.posterior_sample(n_samples=n_samples)
+            predicitions = posterior_samples @ X.T
+            predictions_in_form = predictions_in_EIG_obs_form(predicitions, n_samples_outer_expectation, n_samples_inner_expectation)   
+            return compute_EIG_obs_from_samples(predictions_in_form, self.sigma_0_sq**(1/2))
