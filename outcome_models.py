@@ -109,7 +109,6 @@ class BayesianLinearRegression:
 
         """"Returns a function to sample from the conditional posterior"""
         
-        
         sigma_a = self.cov[:conditioning_index, :conditioning_index]
         sigma_b = self.cov[conditioning_index:, conditioning_index:]
         sigma_c = self.cov[:conditioning_index, conditioning_index:]
@@ -143,7 +142,7 @@ class BayesianLinearRegression:
     
         return conditional_sampling_func
     
-    def closed_form_obs_EIG(self,X):
+    def closed_form_obs_EIG(self, X):
             return compute_EIG_obs_closed_form(X, self.cov, self.sigma_0_sq**(1/2))
     
     def closed_form_causal_EIG(self,X):
@@ -152,21 +151,21 @@ class BayesianLinearRegression:
         return compute_EIG_causal_closed_form(X, self.cov, self.sigma_0_sq**(1/2), self.causal_index)
     
     
-    def samples_obs_EIG(self,X,n_samples_outer_expectation,n_samples_inner_expectation):
+    def samples_obs_EIG(self, X, n_samples_outer_expectation, n_samples_inner_expectation):
             n_samples = n_samples_outer_expectation*(n_samples_inner_expectation+1)
-            posterior_samples = self.posterior_sample(n_samples=n_samples)
-            predicitions = posterior_samples @ X.T
-            predictions_in_form = predictions_in_EIG_obs_form(predicitions, n_samples_outer_expectation, n_samples_inner_expectation)   
+            posterior_samples = self.posterior_sample(n_samples=n_samples).to(torch.float64)
+            predictions = posterior_samples @ X.T
+            predictions_in_form = predictions_in_EIG_obs_form(predictions, n_samples_outer_expectation, n_samples_inner_expectation)   
             return compute_EIG_obs_from_samples(predictions_in_form, self.sigma_0_sq**(1/2))
      
-    def samples_causal_EIG(self,X,n_samples_outer_expectation,n_samples_inner_expectation):
+    def samples_causal_EIG(self, X, n_samples_outer_expectation, n_samples_inner_expectation):
             sample_func = self.return_conditional_sample_function(self.causal_index)
-            posterior_samples = self.posterior_sample(n_samples=n_samples_outer_expectation)
+            posterior_samples = self.posterior_sample(n_samples=n_samples_outer_expectation).to(torch.float64)
             prediction_func = lambda beta: beta @ (X).T
             predictions_paired = predictions_in_EIG_causal_form(pred_func=prediction_func, theta_samples=posterior_samples, theta_sampling_function=sample_func,n_non_causal_expectation= n_samples_inner_expectation,causal_param_first_index= self.causal_index)
             
             n_samples = n_samples_outer_expectation*(n_samples_inner_expectation+1)
-            posterior_samples = self.posterior_sample(n_samples=n_samples)
-            predicitions = posterior_samples @ X.T
-            predictions_upaired = predictions_in_EIG_obs_form(predicitions, n_samples_outer_expectation, n_samples_inner_expectation) 
-            return compute_EIG_causal_from_samples(predictions_upaired,predictions_paired, self.sigma_0_sq**(1/2))
+            posterior_samples = self.posterior_sample(n_samples=n_samples).to(torch.float64)
+            predictions = posterior_samples @ X.T
+            predictions_unpaired = predictions_in_EIG_obs_form(predictions, n_samples_outer_expectation, n_samples_inner_expectation) 
+            return compute_EIG_causal_from_samples(predictions_unpaired,predictions_paired, self.sigma_0_sq**(1/2))

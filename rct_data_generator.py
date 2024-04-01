@@ -52,7 +52,7 @@ def generate_host_and_mirror(X, T, f_assigned_to_host, n_host, n_mirror, power_x
                     break
 
         else:
-            if len(data_mirror['X0']) < n_mirror :
+            if len(data_mirror['X0']) < n_xmirror :
                 for j in range(d_global):
                     data_mirror['X' + str(j)].append(X.iloc[i]['X' + str(j)])
                 data_mirror['T'].append(T[i])
@@ -70,6 +70,7 @@ def generate_host_and_mirror(X, T, f_assigned_to_host, n_host, n_mirror, power_x
     design_data_mirror = add_outcome(design_data_mirror, outcome_function, std_true_y)
     
     return design_data_host, design_data_mirror
+
 
 # def generate_host_and_exact_mirror(X, T, f_assigned_to_host, n_host, n_mirror, power_x, power_x_t, outcome_function, std_true_y):
 

@@ -32,19 +32,19 @@ def predict_with_all_sampled_linear(beta_df, X):
         coefficients = beta_df
     return coefficients @ X.T
 
-def plot_array(dict_additional_plots, x, arr, axis_names, names, text=False, title=False, save=False):
+def plot_array(dict_additional_plots, x, arr, axis_names, names, text=False, title=False, save=False, alpha=1):
 
     n_lines=np.shape(arr)[0]
     plt.figure(figsize=(10, 6))  
-    plt.plot(x, arr[0,:], color='blue', label=names[0])
-    plt.plot(x, arr[1,:], color='orange', label=names[1])
+    plt.plot(x, arr[0,:], color='blue', label=names[0], alpha=alpha)
+    plt.plot(x, arr[1,:], color='orange', label=names[1], alpha=alpha)
 
     if n_lines>2:
         for i in range (2, n_lines):
             if i % 2 == 0:
-                plt.plot(x, arr[i,:], color='blue')
+                plt.plot(x, arr[i,:], color='blue', alpha=alpha)
             if i % 2 == 1:
-                plt.plot(x, arr[i,:], color='orange') 
+                plt.plot(x, arr[i,:], color='orange', alpha=alpha) 
     
     if dict_additional_plots['Exact complementary']:
         complementary = dict_additional_plots['Exact complementary']
