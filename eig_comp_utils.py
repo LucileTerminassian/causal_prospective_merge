@@ -2,7 +2,7 @@ import numpy as np
 from scipy.stats import multivariate_normal
 from scipy.special import logsumexp
 import scipy.stats._covariance as cov
-
+import torch
 def multivariate_normal_likelihood(data, mean, covariance):
     """
     Compute the likelihood of multivariate normal distribution.
@@ -84,7 +84,10 @@ def predictions_in_EIG_causal_form(pred_func, theta_samples, theta_sampling_func
     for theta in theta_samples:
         theta_causal = theta[causal_param_first_index:]
         thetas_samples_non_causal = theta_sampling_function(theta_causal, n_non_causal_expectation)
-        predictions = [pred_func(np.concatenate([np.array(theta_noncausal),np.array(theta_causal)])) for theta_noncausal in thetas_samples_non_causal]
+        if type(theta_causal) == torch.Tensor:
+            predictions = [pred_func(torch.concatenate([(theta_noncausal),(theta_causal)])) for theta_noncausal in thetas_samples_non_causal]
+        else:
+            predictions = [pred_func(np.concatenate([np.array(theta_noncausal),np.array(theta_causal)])) for theta_noncausal in thetas_samples_non_causal]
         paired_predictions.append((pred_func(theta), predictions))
         
     return paired_predictions
