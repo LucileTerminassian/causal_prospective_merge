@@ -99,7 +99,7 @@ class BayesianLinearRegression:
         mvn = multivariate_normal(mean=self.beta, cov=self.cov)
         samples = mvn.rvs(n_samples)
         if type(self.inv_cov) == torch.Tensor:
-            samples = torch.tensor(samples,dtype=torch.float32)
+            samples = torch.tensor(samples,dtype=torch.float64)
         return samples
     
     def set_causal_index(self,causal_index):
@@ -130,7 +130,7 @@ class BayesianLinearRegression:
 
                 mvn = multivariate_normal(mean=conditional_mean, cov=conditional_cov)
 
-                return torch.tensor(mvn.rvs(n_samples),dtype=torch.float32)
+                return torch.tensor(mvn.rvs(n_samples),dtype=torch.float64)
             else:
                 if condition_after:
                     conditional_mean =  self.beta[:conditioning_index] + sigma_c @ (np.linalg.inv(sigma_b)@  (conditioning_vec - self.beta[conditioning_index:]))

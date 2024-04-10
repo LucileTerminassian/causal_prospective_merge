@@ -32,7 +32,7 @@ def predict_with_all_sampled_linear(beta_df, X):
         coefficients = beta_df
     return coefficients @ X.T
 
-def plot_array(dict_additional_plots, x, arr, axis_names, names, text=False, title=False, save=False):
+def plot_non_diff_array(dict_additional_plots, x, arr, axis_names, names, text=False, title=False, save=False):
 
     n_lines=np.shape(arr)[0]
     plt.figure(figsize=(10, 6))  
@@ -46,17 +46,17 @@ def plot_array(dict_additional_plots, x, arr, axis_names, names, text=False, tit
             if i % 2 == 1:
                 plt.plot(x, arr[i,:], color='orange') 
     
-    if dict_additional_plots['Exact complementary']:
-        complementary = dict_additional_plots['Exact complementary']
+    if dict_additional_plots['complementary']:
+        complementary = dict_additional_plots['complementary']
         plt.plot(x, complementary, label='Exact complementary')
-    if dict_additional_plots['Exact twin']:
-        twin = dict_additional_plots['Exact twin']
+    if dict_additional_plots['twin']:
+        twin = dict_additional_plots['twin']
         plt.plot(x, twin, label='Exact twin')
-    if dict_additional_plots['Exact twin treated']:
-        twin_treated = dict_additional_plots['Exact twin treated']
+    if dict_additional_plots['twin_treated']:
+        twin_treated = dict_additional_plots['twin_treated']
         plt.plot(x, twin_treated, label='Exact twin treated')
-    if dict_additional_plots['Exact twin untreated']:
-        twin_untreated = dict_additional_plots['Exact twin untreated']
+    if dict_additional_plots['twin_untreated']:
+        twin_untreated = dict_additional_plots['twin_untreated']
         plt.plot(x, twin_untreated, label='Exact twin untreated')
     
     if title:    
@@ -64,6 +64,47 @@ def plot_array(dict_additional_plots, x, arr, axis_names, names, text=False, tit
     plt.ylabel(axis_names[1])
     plt.xlabel(axis_names[0])
     plt.legend()
+
+    if text:
+        plt.text(0.5, -0.2, text, ha='center', va='center', transform=plt.gca().transAxes)
+
+    if save:
+        current_time = datetime.now().strftime("%H:%M:%S")
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        filename = f"{save}_{current_date}_{current_time}.pdf"
+        plt.savefig(filename)
+
+    plt.show()
+
+
+def plot_array(dict_additional_plots, x, arr, axis_names, names, text=False, title=False, save=False):
+
+    n_lines, n_xaxis=np.shape(arr)[0], np.shape(arr)[1]
+    plt.figure(figsize=(10, 6))  
+    mean_data = np.mean(arr, axis=0)
+    std_data = np.std(arr, axis=0)
+
+    plt.plot(x, mean_data, label='Mean', color='blue')
+    plt.fill_between(x, mean_data - std_data, mean_data + std_data, color='blue', alpha=0.3, label='Standard Deviation')
+    
+    if dict_additional_plots['complementary']:
+        complementary = dict_additional_plots['complementary']
+        plt.plot(x, complementary, label='Exact complementary')
+    if dict_additional_plots['twin']:
+        twin = dict_additional_plots['twin']
+        plt.plot(x, twin, label='Exact twin')
+    if dict_additional_plots['twin_treated']:
+        twin_treated = dict_additional_plots['twin_treated']
+        plt.plot(x, twin_treated, label='Exact twin treated')
+    if dict_additional_plots['twin_untreated']:
+        twin_untreated = dict_additional_plots['twin_untreated']
+        plt.plot(x, twin_untreated, label='Exact twin untreated')
+    
+    if title:    
+        plt.title(title)
+    # plt.ylabel(axis_names[1])
+    # plt.xlabel(axis_names[0])
+    # plt.legend()
 
     if text:
         plt.text(0.5, -0.2, text, ha='center', va='center', transform=plt.gca().transAxes)
