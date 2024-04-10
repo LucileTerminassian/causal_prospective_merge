@@ -11,6 +11,7 @@ import pyro.distributions as dist
 from pyro.infer import MCMC, NUTS
 from eig_comp_utils import compute_EIG_causal_closed_form,compute_EIG_obs_closed_form,compute_EIG_causal_from_samples,compute_EIG_obs_from_samples,predictions_in_EIG_causal_form,predictions_in_EIG_obs_form
 from xbcausalforest import XBCF
+from xbart import XBART
 
 
 def posterior_mean(X, y,sigma_sq, cov_posterior_inv):
@@ -177,31 +178,72 @@ class BayesianCausalForest():
         self.sigma_0_sq = prior_hyperparameters['sigma_0_sq']
         self.p_categorical_pr = prior_hyperparameters['p_categorical_pr']
         self.p_categorical_trt= prior_hyperparameters['p_categorical_trt']
-        self.model = XBCF(p_categorical_pr = self.p_categorical_pr,p_categorical_trt = self.p_categorical_trt) 
+        self.propensity_is_fit = False
+        self.data_is_stored = False
     
-    def set_model_atrs(self,**kwargs):
-                for k,v in kwargs.items():
-                    setattr(self.model, k, v)
+    # def set_model_atrs(self,**kwargs):
+    #             for k,v in kwargs.items():
+    #                 setattr(self.model, k, v)
     
     def store_train_data(self,X,Y,T):
+        self.data_stored =True
         self.X_train = X
         self.Y_train = Y
         self.T_train = T
+        self.X_train_prog = X
     
-    def posterior_sample_predictions(self, X, n_samples):
+    def fit_propensity_model(self,num_trees=100, num_sweeps=80, burnin=15,**kwargs):
+        
+        if not self.data_is_stored:
+             assert("Must store training data first")
+
+        self.prop_model = XBART(num_trees, num_sweeps, burnin,kwargs)
+        self.prop_model.fit(self.X_train,self.T_train)
+
+        T_pred_train = self.prop_model.predict(self.X_train)
+        self.X_train_prog = np.concatenate([self.X_train,T_pred_train.reshape(-1,1)],axis=1)
+
+        return None
+    
+    
+    def posterior_sample_predictions(self, X, T , n_samples,return_predictions=True,**kwargs):
 
         """"Returns n sample predictions from the posterior"""
-        self.set_model_atrs(num_sweeps = n_samples)
+
+        if not self.data_is_stored:
+             assert("Must store training data first")
+        
+
+        self.model = XBCF(num_sweeps=n_samples,p_categorical_pr = self.p_categorical_pr,p_categorical_trt = self.p_categorical_trt,**kwargs)
+
         self.model.fit(
                 x_t=self.X_train, # Covariates treatment effect
-                x=self.X_train, # Covariates outcome (including propensity score)
+                x=self.X_train_prog, # Covariates outcome (including propensity score)
                 y=self.Y_train,  # Outcome
                 z=self.T_train, # Treatment group
                 )
-        return self.model.predict(X,return_mean=False)
+        
+            
+        if self.propensity_is_fit:
+            T_pred = self.prop_model.predict(self.X)
+            X1 = np.concatenate([self.X,T_pred.reshape(-1,1)],axis=1)
+        
+        else:
+            X1 = X
+
+        predictions = self.model.predict(X,X1=X, return_mean=False, return_muhat=return_predictions)
+        
+        if return_predictions:
+            predictions_0 = np.expand_dims(predictions[0],axis=2)
+            predictions_1 = np.expand_dims(predictions[1],axis=2)
+            predictions = np.concatenate([predictions_0,predictions_1],axis=2)
+            
+            predictions = predictions[np.arange((predictions.shape[0])),:,T]
+        
+        return predictions
     
-    def samples_obs_EIG(self,X,n_samples_outer_expectation,n_samples_inner_expectation):
+    def samples_obs_EIG(self,X,T, n_samples_outer_expectation,n_samples_inner_expectation):
             n_samples = n_samples_outer_expectation*(n_samples_inner_expectation+1)
-            predicitions = self.posterior_sample_predictions(X=X,   n_samples=n_samples)
-            predictions_in_form = predictions_in_EIG_obs_form(predicitions, n_samples_outer_expectation, n_samples_inner_expectation)   
+            predicitions = self.posterior_sample_predictions(X=X, T=T,  n_samples=n_samples)
+            predictions_in_form = predictions_in_EIG_obs_form(predicitions.T, n_samples_outer_expectation, n_samples_inner_expectation)   
             return compute_EIG_obs_from_samples(predictions_in_form, self.sigma_0_sq**(1/2))
