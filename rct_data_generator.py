@@ -1,3 +1,4 @@
+from typing import Callable
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
@@ -6,107 +7,74 @@ from scipy.stats import entropy, gaussian_kde
 import sys
 
 
-def generate_rct(n_global, x_distributions):
-    # Generate X
-    dim_x = len(x_distributions)
-    dict_x = {}
-    for name, x_column in x_distributions.items():
-        dict_x[name] = x_column
-    # for i in range(dim_x):
-    # x = x_distributions[i]
-    # dict_x[f"X{i}"] = x
-    X = pd.DataFrame.from_dict(dict_x)
-    # Generate T
-    T = np.random.randint(0, 2, size=n_global)
-
+def generate_rct(
+    x_sampled_covariates: dict[str, np.ndarray]
+) -> tuple[pd.DataFrame, np.ndarray]:
+    X = pd.DataFrame.from_dict(x_sampled_covariates)
+    n_global = X.shape[0]
+    T = np.random.randint(0, 2, size=n_global)  # Generate T
     return X, T
 
 
 # Probability functions
-def sigmoid(x):
+def sigmoid(x: np.ndarray) -> np.ndarray:
     return 1 / (1 + np.exp(-x))
 
 
 # Function to generate host and mirror data
 def generate_host_and_mirror(
-    X,
-    T,
-    f_assigned_to_host,
-    n_host,
-    n_mirror,
+    X: pd.DataFrame,
+    T: np.ndarray,  # combine X and T in generate_rct?
+    f_assigned_to_host: Callable,  # ??
+    n_host: int,
+    n_mirror: int,
     power_x,
     power_x_t,
     outcome_function,
     std_true_y,
-):
-
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     n_global = np.shape(X)[0]
     # Initialize dictionaries
     data_host, data_mirror = {}, {}
 
     # Add 'T' key to each dictionary
-    for name in X.columns:
+    for name in [*X.columns] + ["T"]:
         data_host[name] = []
         data_mirror[name] = []
-    # Add 'T' key to each dictionary
-    data_host["T"] = []
-    data_mirror["T"] = []
 
     if n_host + n_mirror > n_global:
         print("n_host + n_mirror > n_rct")
-        return
+        raise ValueError("n_host + n_mirror > n_rct")
 
-    done_mirror, done_host = False, False
+    count_mirror, count_host = 0, 0
 
     for i in range(n_global):
-
         proba_assigned_to_host = f_assigned_to_host(
             X.iloc[i, :], T[i], np.random.normal()
         )
-        is_assigned_to_host = np.random.binomial(1, proba_assigned_to_host)
+        is_assigned_to_host = np.random.binomial(1, proba_assigned_to_host)  # 0 or 1
 
-        first_column_host = next(iter(data_host.values()))
-        first_column_mirror = next(iter(data_mirror.values()))
+        if is_assigned_to_host and count_host < n_host:
+            for column_name in X.columns:
+                data_host[column_name].append(X.iloc[i][column_name])
+            data_host["T"].append(T[i])
+            count_host += 1
+        elif not is_assigned_to_host and count_mirror < n_mirror:
+            for column_name in X.columns:
+                data_mirror[column_name].append(X.iloc[i][column_name])
+            data_mirror["T"].append(T[i])
+            count_mirror += 1
 
-        if is_assigned_to_host:
-            if len(first_column_host) < n_host:
-                for column_name in X.columns:
-                    data_host[column_name].append(X.iloc[i][column_name])
-                data_host["T"].append(T[i])
-            else:
-                done_host = True
-                pass
-
-        else:
-            if len(first_column_mirror) < n_mirror:
-                for column_name in X.columns:
-                    data_mirror[column_name].append(X.iloc[i][column_name])
-                data_mirror["T"].append(T[i])
-            else:
-                done_mirror = True
-                pass
-        if done_mirror and done_host:
+        if count_mirror == n_mirror and count_host == n_host:
             break
 
     data_host = pd.DataFrame.from_dict(data_host)
     data_mirror = pd.DataFrame.from_dict(data_mirror)
 
     if len(data_mirror) != n_mirror:
-        print(
-            "len(data_mirror) n="
-            + str(len(data_mirror))
-            + " != n_mirror ("
-            + str(n_mirror)
-            + ")"
-        )
+        print(f"len(data_mirror) n={len(data_mirror)} != n_mirror ({n_mirror})")
     if len(data_host) != n_host:
-        print(
-            "len(data_host) n="
-            + str(len(data_host))
-            + " != n_mirror ("
-            + str(n_host)
-            + ")"
-        )
+        print(f"len(data_host) n={len(data_host)} != n_host ({n_host})")
 
     design_data_host = generate_design_matrix(data_host, power_x, power_x_t)
     design_data_mirror = generate_design_matrix(data_mirror, power_x, power_x_t)
@@ -166,64 +134,40 @@ def generate_cand2(
     return design_cand2
 
 
-def generate_design_matrix(data, power_x, power_x_t):
+def generate_design_matrix(data, power_x: int, power_x_t: int):
     # Extract X and T from the dataframe
     X = data.drop(columns=["T"])
     T = data["T"]
-
-    # Initialize a dataframe to hold the design matrix with intercept column filled with ones
     n, d = np.shape(X)
-    X_prime = pd.DataFrame(np.ones((n, d * power_x + d * power_x_t + 2)))
 
-    # Create a list to hold column names
-    column_names = ["intercept"]
+    # Initialize the design matrix
+    X_prime = pd.DataFrame(index=range(n))
+    X_prime["intercept"] = 1.0
+    # append X to X_prime
+    X_prime = pd.concat([X_prime, X], axis=1)
 
-    for i in range(1, power_x + 1):
+    # Concatenate X^i for i=2 upto power_x
+    for i in range(2, power_x + 1):
         for col in X.columns:
-            if i > 1:
-                column_names.append(f"{col}**{i}")
-            else:
-                column_names.append(f"{col}")
+            X_prime[f"{col}**{i}"] = X[col] ** i
 
-    column_names.append("T")
-
-    for i in range(1, power_x_t + 1):
-        for col in X.columns:
-            if i > 1:
-                column_names.append(f"T*{col}**{i}")
-            else:
-                column_names.append(f"T*{col}")
-
-    # Set column names for X_prime
-    X_prime.columns = column_names
-
-    # Concatenate X^i for i = 1 to power_x
-    for i in range(1, power_x + 1):
-        for col in X.columns:
-            if i > 1:
-                X_prime[f"{col}**{i}"] = X[col] ** i
-            else:
-                X_prime[f"{col}"] = X[col] ** i
-
+    # Concat T and T*X^i for i=1 upto power_x_t
     X_prime["T"] = T
-
-    # Concatenate T*X^i for i = 1 to power_x_t
     for i in range(1, power_x_t + 1):
         for col in X.columns:
-            if i > 1:
-                X_prime[f"T*{col}**{i}"] = T * (X[col] ** i)
-            else:
-                X_prime[f"T*{col}"] = T * (X[col] ** i)
+            colname = f"T*{col}**{i}" if i > 1 else f"T*{col}"
+            X_prime[colname] = T * (X[col] ** i)
+
+    assert X_prime.shape == (n, 1 + d * power_x + 1 + d * power_x_t), "Shape mismatch"
 
     return X_prime
 
 
-def add_outcome(data, outcome_function, scale):
-
+def add_outcome(data, outcome_function, noise_scale):
     n = np.shape(data)[0]
     X = data.drop(columns=["T"])
     T = data["T"]
-    eps = np.random.normal(size=n, scale=scale)
+    eps = np.random.normal(size=n, scale=noise_scale)
 
     Y = outcome_function(X, T, eps)
     data["Y"] = Y
@@ -266,20 +210,20 @@ def generate_synthetic_data_varying_sample_size(data_parameters, print=True):
 
     for length in n_both_candidates_list:
 
-        X_rct, T_rct = generate_rct(n_rct_before_split, x_distributions)
+        X_rct, T_rct = generate_rct(x_distributions)
         design_data_host, design_data_mirror = generate_host_and_mirror(
-            X_rct,
-            T_rct,
-            p_assigned_to_cand2,
-            n_host,
-            length,
-            power_x,
-            power_x_t,
-            outcome_function,
-            std_true_y,
+            X=X_rct,
+            T=T_rct,
+            f_assigned_to_host=p_assigned_to_cand2,
+            n_host=n_host,
+            n_mirror=length,
+            power_x=power_x,
+            power_x_t=power_x_t,
+            outcome_function=outcome_function,
+            std_true_y=std_true_y,
         )
 
-        pre_X_cand2, pre_T_cand2 = generate_rct(n_rct_before_split, x_distributions)
+        pre_X_cand2, pre_T_cand2 = generate_rct(x_distributions)
         design_data_cand2 = generate_cand2(
             pre_X_cand2,
             pre_T_cand2,
@@ -300,7 +244,9 @@ def generate_synthetic_data_varying_sample_size(data_parameters, print=True):
     return data
 
 
-def generate_exact_synthetic_data_varying_sample_size(data_parameters):
+def generate_exact_synthetic_data_varying_sample_size(
+    data_parameters,
+) -> dict[int, dict]:
 
     (
         n_both_candidates_list,
@@ -334,8 +280,7 @@ def generate_exact_synthetic_data_varying_sample_size(data_parameters):
     data = {}
 
     for length in n_both_candidates_list:
-
-        X_rct, T_rct = generate_rct(n_rct_before_split, x_distributions)
+        X_rct, T_rct = generate_rct(x_distributions)
         design_data_host, design_data_mirror = generate_host_and_mirror(
             X_rct,
             T_rct,
@@ -435,7 +380,6 @@ def generate_exact_synthetic_data_varying_sample_size(data_parameters):
 
 
 def generate_data_from_real_varying_sample_size(X, T, data_parameters):
-
     n_both_candidates_list, proportion, p_assigned_to_cand2 = (
         data_parameters["n_both_candidates_list"],
         data_parameters["proportion"],
@@ -599,3 +543,63 @@ def generate_exact_real_data_varying_sample_size(X, T, data_parameters):
         }
 
     return data
+
+
+if __name__ == "__main__":
+    n_both_candidates_list = [200]  # , 500, 1000
+    proportion = 1  # n_cand2 = prorportion * n_both_candidates_list
+    std_true_y = 1
+    # set seed
+    np.random.seed(42)
+
+    n_rct_before_split = 10**5
+    n_host = 200
+    sigma_prior = 1
+    sigma_rand_error = 1
+
+    power_x, power_x_t = 1, 1
+    causal_param_first_index = 4
+    outcome_function = (
+        # y = 1 + 1*X_0 - 1*X_1 + 1*X_2 + 4*T + 2*X_0*T + 2*X_1*T + 0*X_2*T + eps
+        lambda X, T, eps: 1  # intercept, non-causal
+        + 1 * X["X_0"]  # non-causal
+        - 1 * X["X_1"]  # non-causal
+        + 1 * X["X_2"]  # non-causal
+        + 4 * T  # causal
+        + 2 * X["X_0"] * T  # causal
+        + 2 * X["X_1"] * T  # causal
+        + 0 * X["X_2"] * T  # causal
+        + eps
+    )
+    true_params = np.array([1, 1, -1, 1, 4, 2, 2, 0])  # copied from above
+    std_true_y = 1  # Standard deviation for the true Y
+
+    X0 = np.random.beta(12, 3, size=n_rct_before_split)
+    X1 = np.random.normal(loc=4, scale=1, size=n_rct_before_split)
+    X2 = np.random.beta(1, 7, size=n_rct_before_split)
+    x_distributions = {"X_0": X0, "X_1": X1, "X_2": X2}
+    d = 1 + len(x_distributions) * (power_x) + 1 + len(x_distributions) * (power_x_t)
+
+    p_assigned_to_host = lambda X, T, eps: sigmoid(
+        1 + 2 * X["X_0"] - X["X_1"] + 2 * T + eps
+    )
+    p_assigned_to_cand2 = lambda X, T, eps: sigmoid(
+        1 + 2 * X["X_0"] - X["X_1"] + 2 * T + eps
+    )
+    # p_assigned_to_cand2 = lambda X_0, X_1, T, eps: sigmoid(1 - 2*X_0 + eps)
+
+    data_parameters = {
+        "n_both_candidates_list": n_both_candidates_list,
+        "proportion": proportion,
+        "n_rct_before_split": n_rct_before_split,
+        "x_distributions": x_distributions,
+        "p_assigned_to_cand2": p_assigned_to_cand2,
+        "n_host": n_host,
+        "power_x": power_x,
+        "power_x_t": power_x_t,
+        "outcome_function": outcome_function,
+        "std_true_y": std_true_y,
+        "causal_param_first_index": causal_param_first_index,
+    }
+    data = generate_exact_synthetic_data_varying_sample_size(data_parameters)
+    print(data)
