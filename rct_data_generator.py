@@ -277,6 +277,7 @@ def generate_exact_synthetic_data_varying_sample_size(data_parameters):
         
         data[length] = {'host': design_data_host, 'exact_complementary': design_data_exact_complementary, 'exact_twin': design_data_exact_twin, \
                         'exact_twin_untreated': design_data_exact_twin_untreated, 'exact_twin_treated': design_data_exact_twin_treated}
+        
 
     return data
 
