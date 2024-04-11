@@ -9,10 +9,10 @@ torch.set_default_tensor_type(torch.FloatTensor) # set the default to float32
 import pyro
 import pyro.distributions as dist
 from pyro.infer import MCMC, NUTS
-from eig_comp_utils import compute_EIG_causal_closed_form,compute_EIG_obs_closed_form,compute_EIG_causal_from_samples,compute_EIG_obs_from_samples,predictions_in_EIG_causal_form,predictions_in_EIG_obs_form
+from eig_comp_utils import compute_EIG_causal_closed_form,compute_EIG_obs_closed_form,compute_EIG_causal_from_samples,compute_EIG_obs_from_samples,predictions_in_EIG_causal_form,predictions_in_EIG_obs_form,calc_posterior_predictive_entropy
 from xbcausalforest import XBCF
 from xbart import XBART
-
+from tqdm import tqdm
 
 def posterior_mean(X, y,sigma_sq, cov_posterior_inv):
     
@@ -174,10 +174,12 @@ class BayesianLinearRegression:
     
 class BayesianCausalForest():
     
-    def __init__(self, prior_hyperparameters):
+    def __init__(self, prior_hyperparameters,predictive_model_parameters={},conditional_model_param={}):
         self.sigma_0_sq = prior_hyperparameters['sigma_0_sq']
         self.p_categorical_pr = prior_hyperparameters['p_categorical_pr']
         self.p_categorical_trt= prior_hyperparameters['p_categorical_trt']
+        self.pred_model_param = predictive_model_parameters
+        self.cond_model_param = conditional_model_param
         self.propensity_is_fit = False
         self.data_is_stored = False
     
@@ -206,7 +208,7 @@ class BayesianCausalForest():
         return None
     
     
-    def posterior_sample_predictions(self, X, T , n_samples,return_predictions=True,**kwargs):
+    def posterior_sample_predictions(self, X, T , n_samples,return_tau=False):
 
         """"Returns n sample predictions from the posterior"""
 
@@ -214,13 +216,13 @@ class BayesianCausalForest():
              assert("Must store training data first")
         
 
-        self.model = XBCF(num_sweeps=n_samples,p_categorical_pr = self.p_categorical_pr,p_categorical_trt = self.p_categorical_trt,**kwargs)
+        self.model = XBCF(num_sweeps=n_samples,p_categorical_pr = self.p_categorical_pr,p_categorical_trt = self.p_categorical_trt,**self.pred_model_param)
 
         self.model.fit(
-                x_t=self.X_train, # Covariates treatment effect
-                x=self.X_train_prog, # Covariates outcome (including propensity score)
-                y=self.Y_train,  # Outcome
-                z=self.T_train, # Treatment group
+                x_t = self.X_train, # Covariates treatment effect
+                x = self.X_train_prog, # Covariates outcome (including propensity score)
+                y = self.Y_train,  # Outcome
+                z = self.T_train, # Treatment group
                 )
         
             
@@ -231,19 +233,108 @@ class BayesianCausalForest():
         else:
             X1 = X
 
-        predictions = self.model.predict(X,X1=X, return_mean=False, return_muhat=return_predictions)
+        predictions = self.model.predict(X,X1=X1, return_mean=False, return_muhat=True)
         
-        if return_predictions:
-            predictions_0 = np.expand_dims(predictions[0],axis=2)
-            predictions_1 = np.expand_dims(predictions[1],axis=2)
-            predictions = np.concatenate([predictions_0,predictions_1],axis=2)
-            
-            predictions = predictions[np.arange((predictions.shape[0])),:,T]
+        b = self.model.b
+        b_adj = (b/( np.expand_dims(b[:,1]-b[:,0],axis= 1)))
         
-        return predictions
+        tau_adj = predictions[0]* (b_adj.T[T])
+        
+        if return_tau:
+            return (tau_adj + predictions[1]).T, tau_adj.T
+        else:
+            return (tau_adj + predictions[1]).T
     
+    def posterior_conditional_predictions(self, X, T, Y_residuals , n_samples,return_tau=False):
+
+        """"Returns n sample predictions from the posterior"""
+
+        if not self.data_is_stored:
+             assert("Must store training data first")
+        
+
+        self.model = XBCF(num_trees_trt=0,num_sweeps=n_samples,p_categorical_pr = self.p_categorical_pr,p_categorical_trt = self.p_categorical_trt,**self.cond_model_param)
+
+        self.model.fit(
+                x_t = np.zeros_like(self.X_train), # Covariates treatment effect
+                x = self.X_train_prog, # Covariates outcome (including propensity score)
+                y = Y_residuals,  # Outcome
+                z = self.T_train, # Treatment group
+                )
+        
+            
+        if self.propensity_is_fit:
+            T_pred = self.prop_model.predict(self.X)
+            X1 = np.concatenate([self.X,T_pred.reshape(-1,1)],axis=1)
+        
+        else:
+            X1 = X
+
+        predictions = self.model.predict(X,X1=X, return_mean=False, return_muhat=True)
+        
+        b = self.model.b
+        b_adj = (b/( np.expand_dims(b[:,1]-b[:,0],axis= 1)))
+        
+        tau_adj = predictions[0]* (b_adj.T[T])
+
+        if return_tau:
+            return (tau_adj + predictions[1]).T, tau_adj.T
+        else:
+            return (tau_adj + predictions[1]).T
+        
+
     def samples_obs_EIG(self,X,T, n_samples_outer_expectation,n_samples_inner_expectation):
             n_samples = n_samples_outer_expectation*(n_samples_inner_expectation+1)
-            predicitions = self.posterior_sample_predictions(X=X, T=T,  n_samples=n_samples)
-            predictions_in_form = predictions_in_EIG_obs_form(predicitions.T, n_samples_outer_expectation, n_samples_inner_expectation)   
+            predicitions = self.posterior_sample_predictions(X=X, T=T,  n_samples=n_samples,return_tau= False)
+            predictions_in_form = predictions_in_EIG_obs_form(predicitions, n_samples_outer_expectation, n_samples_inner_expectation)   
             return compute_EIG_obs_from_samples(predictions_in_form, self.sigma_0_sq**(1/2))
+    
+    def samples_causal_EIG(self,X,T,n_samples_outer_expectation,n_samples_inner_expectation):
+            n_e = len(T)
+            print("Calculating posterior predictive entropy")
+
+            posterior_predictive_entropy = self.samples_obs_EIG(X,T, n_samples_outer_expectation,n_samples_inner_expectation)+ n_e/2 * (1 + np.log(2 * np.pi * self.sigma_0_sq))
+            predictions,tau_pred = self.posterior_sample_predictions(X=X, T=T,  n_samples=n_samples_outer_expectation,return_tau= True)
+            
+            tau_train = self.model.tauhats_adjusted.T
+            
+            print("Getting conditional samples")
+            causal_sample = []
+            for i in tqdm(range(len(tau_train))):
+                Y_resid = self.Y_train - tau_train[i]
+                conditional_predictions = self.posterior_conditional_predictions(X=X,T=T,Y_residuals=Y_resid,n_samples=n_samples_inner_expectation)
+                conditional_predictions = conditional_predictions + tau_pred[i]
+                causal_sample.append((predictions[i],conditional_predictions))
+            return posterior_predictive_entropy - calc_posterior_predictive_entropy(causal_sample, self.sigma_0_sq**(1/2))
+    
+    def joint_EIG_calc(self,X,T,n_samples_outer_expectation_obs,n_samples_inner_expectation_obs,n_samples_outer_expectation_caus,n_samples_inner_expectation_caus):
+            
+            
+            n_samples = n_samples_outer_expectation_obs*(n_samples_inner_expectation_obs+1)
+            print("Sampling from Posterior")
+            predicitions_obs,tau_pred = self.posterior_sample_predictions(X=X, T=T,  n_samples=n_samples,return_tau= True)
+            predictions_in_form = predictions_in_EIG_obs_form(predicitions_obs, n_samples_outer_expectation_obs, n_samples_inner_expectation_obs) 
+            
+            random_sample = np.random.choice(np.arange(n_samples),n_samples_outer_expectation_caus)
+            predictions_sampled,tau_sampled = predicitions_obs[random_sample], tau_pred[random_sample]
+            
+            tau_train = self.model.tauhats_adjusted.T[random_sample]
+            
+            print("Getting conditional samples")
+            causal_sample = []
+            for i in tqdm(range(len(tau_train))):
+                Y_resid = self.Y_train - tau_train[i]
+                conditional_predictions = self.posterior_conditional_predictions(X=X,T=T,Y_residuals=Y_resid,n_samples=n_samples_inner_expectation_caus)
+                conditional_predictions = conditional_predictions + tau_sampled[i]
+                causal_sample.append((predictions_sampled[i],conditional_predictions))
+
+            posterior_predictive_entropy = calc_posterior_predictive_entropy(predictions_in_form, self.sigma_0_sq**(1/2))
+
+            n_e = len(T)
+            
+            results_dict ={
+                "Posterior Predictive Entropy": posterior_predictive_entropy,
+                "Obs EIG": posterior_predictive_entropy - n_e/2 * (1 + np.log(2 * np.pi * self.sigma_0_sq)),
+                "Causal EIG":posterior_predictive_entropy - calc_posterior_predictive_entropy(causal_sample, self.sigma_0_sq**(1/2))
+            }
+            return results_dict
