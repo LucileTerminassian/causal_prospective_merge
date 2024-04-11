@@ -84,15 +84,13 @@ def plot_array(dict_additional_plots, x, arr, axis_names, names, text=False, tit
     mean_data = np.mean(arr, axis=0)
     std_data = np.std(arr, axis=0)
 
-    plt.plot(x, mean_data, label='Mean', color='blue')
-    plt.fill_between(x, mean_data - std_data, mean_data + std_data, color='blue', alpha=0.3, label='Standard Deviation')
+    plt.plot(x, mean_data, label='complementary - twin', color='blue')
+    plt.fill_between(x, mean_data - std_data, mean_data + std_data, color='blue', alpha=0.3)
     
     if dict_additional_plots['complementary']:
-        complementary = dict_additional_plots['complementary']
-        plt.plot(x, complementary, label='Exact complementary')
-    if dict_additional_plots['twin']:
-        twin = dict_additional_plots['twin']
-        plt.plot(x, twin, label='Exact twin')
+        complementary = np.array(dict_additional_plots['complementary'])
+        twin = np.array(dict_additional_plots['twin'])
+        plt.plot(x, complementary-twin, label='Exact complementary - twin')
     if dict_additional_plots['twin_treated']:
         twin_treated = dict_additional_plots['twin_treated']
         plt.plot(x, twin_treated, label='Exact twin treated')
@@ -102,9 +100,9 @@ def plot_array(dict_additional_plots, x, arr, axis_names, names, text=False, tit
     
     if title:    
         plt.title(title)
-    # plt.ylabel(axis_names[1])
-    # plt.xlabel(axis_names[0])
-    # plt.legend()
+    plt.ylabel(axis_names[1])
+    plt.xlabel(axis_names[0])
+    plt.legend()
 
     if text:
         plt.text(0.5, -0.2, text, ha='center', va='center', transform=plt.gca().transAxes)

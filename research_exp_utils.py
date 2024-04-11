@@ -13,7 +13,7 @@ from eig_comp_utils import *
 
  ## noisy
 
-def compute_eig_closed_form_varying_sample_size(data, data_parameters, sigma_rand_error, prior_hyperparameters, n_mc, verbose=True):
+def linear_eig_closed_form_varying_sample_size(data, data_parameters, sigma_rand_error, prior_hyperparameters, n_mc, verbose=True):
     
     n_both_candidates_list, proportion = data_parameters['n_both_candidates_list'], data_parameters['proportion']
     std_true_y, causal_param_first_index = data_parameters['std_true_y'], data_parameters['causal_param_first_index']
@@ -42,16 +42,18 @@ def compute_eig_closed_form_varying_sample_size(data, data_parameters, sigma_ran
         X_mirror = torch.from_numpy(data[length]['mirror'].drop(columns=['Y']).values)
         X_cand2 = torch.from_numpy(data[length]['cand2'].drop(columns=['Y']).values)
   
-        # if verbose:
+        if verbose:
             
-        #     percent_treated_host = 100*sum(X_host["T"])/len(X_host)
-        #     percent_treated_mirror = 100*sum(X_mirror["T"])/len(X_mirror)
-        #     percent_treated_cand2 = 100*sum(X_cand2["T"])/len(X_cand2)
+            T_host, T_mirror, T_cand2 = data[length]['host']['T'], data[length]['mirror']['T'], data[length]['cand2']['T']
 
-        #     print("For a sample size in mirror and host of "+str(length))
-        #     print(f'Percentage of treated in host: {percent_treated_host}%')
-        #     print(f'Percentage of treated in mirror: {percent_treated_mirror}%')
-        #     print(f'Percentage of treated in cand2: {percent_treated_cand2}%') 
+            percent_treated_host = 100*sum(T_host)/len(T_host)
+            percent_treated_mirror = 100*sum(T_mirror)/len(T_mirror)
+            percent_treated_cand2 = 100*sum(T_cand2)/len(T_cand2)
+
+            print("For a sample size in mirror and host of "+str(length))
+            print(f'Percentage of treated in host: {percent_treated_host}%')
+            print(f'Percentage of treated in mirror: {percent_treated_mirror}%')
+            print(f'Percentage of treated in cand2: {percent_treated_cand2}%') 
 
         results['EIG_obs_closed_form_mirror'].append(bayes_reg.closed_form_obs_EIG(X_mirror))   
         results['EIG_obs_closed_form_cand2'].append(bayes_reg.closed_form_obs_EIG(X_cand2))   
@@ -67,7 +69,7 @@ def compute_eig_closed_form_varying_sample_size(data, data_parameters, sigma_ran
  ## exact
 
 
-def compute_eig_closed_form_exact_datasets(data, data_parameters, sigma_rand_error, prior_hyperparameters, n_mc):
+def linear_eig_closed_form_exact_datasets(data, data_parameters, sigma_rand_error, prior_hyperparameters, n_mc):
 
     n_both_candidates_list, proportion = data_parameters['n_both_candidates_list'], data_parameters['proportion']
     std_true_y, causal_param_first_index = data_parameters['std_true_y'], data_parameters['causal_param_first_index']
@@ -118,7 +120,7 @@ def compute_eig_closed_form_exact_datasets(data, data_parameters, sigma_rand_err
 
 ## noisy
 
-def compute_eig_from_samples_varying_sample_size(data, data_parameters, prior_hyperparameters, sampling_parameters):
+def linear_eig_from_samples_varying_sample_size(data, data_parameters, prior_hyperparameters, sampling_parameters):
 
     results = {'EIG_obs_from_samples_mirror':[], 'EIG_obs_from_samples_cand2':[], 'EIG_caus_from_samples_mirror':[], 'EIG_caus_from_samples_cand2':[]}
 
@@ -160,7 +162,7 @@ def compute_eig_from_samples_varying_sample_size(data, data_parameters, prior_hy
  ## exact
 
 
-def compute_eig_from_samples_exact_datasets(data, data_parameters, prior_hyperparameters, n_mc, sampling_parameters):
+def linear_eig_from_samples_exact_datasets(data, data_parameters, prior_hyperparameters, n_mc, sampling_parameters):
 
     n_both_candidates_list, proportion, = data_parameters['n_both_candidates_list'],  data_parameters['proportion']
     causal_param_first_index = data_parameters['causal_param_first_index']
@@ -200,5 +202,108 @@ def compute_eig_from_samples_exact_datasets(data, data_parameters, prior_hyperpa
         dict_results_caus['twin'].append(bayes_reg.samples_causal_EIG(X_exact_twin, n_causal_outer_exp, n_causal_inner_exp))   
         dict_results_caus['twin_treated'].append(bayes_reg.samples_causal_EIG(X_exact_twin_treated, n_causal_outer_exp, n_causal_inner_exp))   
         dict_results_caus['twin_untreated'].append(bayes_reg.samples_causal_EIG(X_exact_twin_untreated, n_causal_outer_exp, n_causal_inner_exp)) 
+        
+    return dict_results_obs, dict_results_caus
+
+
+#################################### FROM SAMPLES
+
+## noisy
+
+def bart_eig_from_samples_varying_sample_size(data, data_parameters, prior_hyperparameters, predictive_model_parameters, \
+                                              conditional_model_param, sampling_parameters):
+
+    # data is nested dictionary
+    # data[length]['host] is a pandas df for the host site
+
+    results = {'EIG_obs_from_samples_mirror':[], 'EIG_obs_from_samples_cand2':[], 'EIG_caus_from_samples_mirror':[], 'EIG_caus_from_samples_cand2':[]}
+
+    n_both_candidates_list, proportion, = data_parameters['n_both_candidates_list'],  data_parameters['proportion']
+    causal_param_first_index = data_parameters['causal_param_first_index']
+
+    n_samples_outer_expectation, n_samples_inner_expectation, n_causal_inner_exp, n_causal_outer_exp = sampling_parameters['n_samples_outer_expectation'],\
+        sampling_parameters['n_samples_inner_expectation'], sampling_parameters['n_causal_inner_exp'], sampling_parameters['n_causal_outer_exp']
+
+    for length in n_both_candidates_list:
+        
+        X_host, T_host, Y_host = data[length]['host'].drop(columns=['Y', 'T']).values, \
+            data[length]['host']['T'].values, data[length]['host']['Y'].values
+        
+        X_mirror, T_mirror = data[length]['mirror'].drop(columns=['Y', 'T']).values, data[length]['mirror']['T'].values 
+        X_cand2, T_cand2 = data[length]['cand2'].drop(columns=['Y', 'T']).values, data[length]['mirror']['T'].values 
+
+        bcf = BayesianCausalForest(prior_hyperparameters, predictive_model_parameters={"num_trees_pr":200,"num_trees_trt":100}, \
+                                   conditional_model_param={"num_trees_pr":200})
+        bcf.store_train_data(X=X_host, T=T_host, Y=Y_host)
+
+        results_mirror = bcf.joint_EIG_calc(X_mirror,T_mirror, sampling_parameters)
+        
+        results_cand2 = bcf.joint_EIG_calc(X_cand2,T_cand2, sampling_parameters)
+
+        
+        results['EIG_obs_from_samples_mirror'].append(results_mirror["Obs EIG"])
+        results['EIG_obs_from_samples_cand2'].append(results_cand2["Obs EIG"])   
+
+        results['EIG_caus_from_samples_mirror'].append(results_mirror["Causal EIG"])
+        results['EIG_caus_from_samples_cand2'].append(results_cand2["Causal EIG"])   
+
+    EIG_obs_samples = np.vstack((results['EIG_obs_from_samples_mirror'], results['EIG_obs_from_samples_cand2']))
+    EIG_caus_samples = np.vstack((results['EIG_caus_from_samples_mirror'], results['EIG_caus_from_samples_cand2']))
+
+    return EIG_obs_samples, EIG_caus_samples
+
+
+## exact
+
+def bart_eig_from_samples_exact_datasets(data, data_parameters, prior_hyperparameters, predictive_model_parameters, \
+                                              conditional_model_param, sampling_parameters):
+
+    n_both_candidates_list, proportion, = data_parameters['n_both_candidates_list'],  data_parameters['proportion']
+    causal_param_first_index = data_parameters['causal_param_first_index']
+
+    n_samples_outer_expectation, n_samples_inner_expectation, n_causal_inner_exp, n_causal_outer_exp = sampling_parameters['n_samples_outer_expectation'],\
+    sampling_parameters['n_samples_inner_expectation'], sampling_parameters['n_causal_inner_exp'], sampling_parameters['n_causal_outer_exp']
+
+
+    dict_results_obs={'complementary': [], 'twin': [], \
+                      'twin_treated': [], 'twin_untreated': []}
+    dict_results_caus={'complementary': [], 'twin': [], \
+                      'twin_treated': [], 'twin_untreated': []}
+
+    for length in n_both_candidates_list:
+
+        X_exact_complementary, T_exact_complementary = data[length]['exact_complementary'].drop(columns=['Y','T']).values, \
+                        data[length]['host']['T'].values
+        X_exact_twin, T_exact_twin = data[length]['exact_twin'].drop(columns=['Y','T']).values, \
+                        data[length]['exact_twin']['T'].values
+        X_exact_twin_treated, T_exact_twin_treated = data[length]['exact_twin_treated'].drop(columns=['Y','T']).values, \
+                        data[length]['exact_twin_treated']['T'].values
+        X_exact_twin_untreated, T_exact_twin_untreated = data[length]['exact_twin_untreated'].drop(columns=['Y','T']).values, \
+                        data[length]['exact_twin_untreated']['T'].values
+
+        X_host, T_host, Y_host = data[length]['host'].drop(columns=['Y', 'T']).values, \
+                                data[length]['host']['T'].values, data[length]['host']['Y'].values
+        
+        bcf = BayesianCausalForest(prior_hyperparameters, predictive_model_parameters=predictive_model_parameters, \
+                                   conditional_model_param=conditional_model_param)
+        bcf.store_train_data(X=X_host, T=T_host, Y=Y_host)
+
+        results_complementary = bcf.joint_EIG_calc(X_exact_complementary,T_exact_complementary,sampling_parameters)
+        
+        results_twin = bcf.joint_EIG_calc(X_exact_twin,T_exact_twin,sampling_parameters)
+        
+        results_twin_treated = bcf.joint_EIG_calc(X_exact_twin_treated,T_exact_twin_treated,sampling_parameters)
+        
+        results_twin_untreated = bcf.joint_EIG_calc(X_exact_twin_untreated,T_exact_twin_untreated,sampling_parameters)
+        
+        dict_results_obs['complementary'].append(results_complementary["Obs EIG"])
+        dict_results_obs['twin'].append(results_twin["Obs EIG"])   
+        dict_results_obs['twin_treated'].append(results_twin_treated["Obs EIG"])   
+        dict_results_obs['twin_untreated'].append(results_twin_untreated["Obs EIG"])   
+
+        dict_results_obs['complementary'].append(results_complementary["Causal EIG"])
+        dict_results_obs['twin'].append(results_twin["Causal EIG"])   
+        dict_results_obs['twin_treated'].append(results_twin_treated["Causal EIG"])   
+        dict_results_obs['twin_untreated'].append(results_twin_untreated["Causal EIG"])   
         
     return dict_results_obs, dict_results_caus

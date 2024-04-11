@@ -201,6 +201,7 @@ class BayesianCausalForest():
 
         self.prop_model = XBART(num_trees, num_sweeps, burnin,kwargs)
         self.prop_model.fit(self.X_train,self.T_train)
+        self.propensity_is_fit = True
 
         T_pred_train = self.prop_model.predict(self.X_train)
         self.X_train_prog = np.concatenate([self.X_train,T_pred_train.reshape(-1,1)],axis=1)
@@ -224,7 +225,6 @@ class BayesianCausalForest():
                 y = self.Y_train,  # Outcome
                 z = self.T_train, # Treatment group
                 )
-        
             
         if self.propensity_is_fit:
             T_pred = self.prop_model.predict(self.X)
@@ -306,10 +306,14 @@ class BayesianCausalForest():
                 conditional_predictions = conditional_predictions + tau_pred[i]
                 causal_sample.append((predictions[i],conditional_predictions))
             return posterior_predictive_entropy - calc_posterior_predictive_entropy(causal_sample, self.sigma_0_sq**(1/2))
-    
-    def joint_EIG_calc(self,X,T,n_samples_outer_expectation_obs,n_samples_inner_expectation_obs,n_samples_outer_expectation_caus,n_samples_inner_expectation_caus):
+
+    def joint_EIG_calc(self, X, T, sampling_parameters): 
             
-            
+            n_samples_outer_expectation_obs, n_samples_inner_expectation_obs = sampling_parameters['n_samples_outer_expectation_obs'],\
+                    sampling_parameters['n_samples_inner_expectation_obs']
+            n_samples_outer_expectation_caus, n_samples_inner_expectation_caus  = sampling_parameters['n_samples_outer_expectation_caus'],\
+                   sampling_parameters['n_samples_inner_expectation_caus']
+
             n_samples = n_samples_outer_expectation_obs*(n_samples_inner_expectation_obs+1)
             print("Sampling from Posterior")
             predicitions_obs,tau_pred = self.posterior_sample_predictions(X=X, T=T,  n_samples=n_samples,return_tau= True)
