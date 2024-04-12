@@ -28,53 +28,44 @@ def generate_host_and_mirror(
     f_assigned_to_host: Callable,  # ??
     n_host: int,
     n_mirror: int,
-    power_x,
-    power_x_t,
-    outcome_function,
-    std_true_y,
+    power_x: int,
+    power_x_t: int,
+    outcome_function: Callable,
+    std_true_y: float,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    n_global = np.shape(X)[0]
-    # Initialize dictionaries
-    data_host, data_mirror = {}, {}
 
-    # Add 'T' key to each dictionary
-    for name in [*X.columns] + ["T"]:
-        data_host[name] = []
-        data_mirror[name] = []
-
-    if n_host + n_mirror > n_global:
-        print("n_host + n_mirror > n_rct")
+    if n_host + n_mirror > X.shape[0]:
         raise ValueError("n_host + n_mirror > n_rct")
 
-    count_mirror, count_host = 0, 0
+    X_and_T = pd.concat([X, pd.DataFrame(T, columns=["T"])], axis=1)
+    # Initialize dataframes for the host and mirror
+    data_host = pd.DataFrame(index=range(n_host), columns=[*X.columns] + ["T"])
+    data_mirror = pd.DataFrame(index=range(n_mirror), columns=[*X.columns] + ["T"])
 
-    for i in range(n_global):
+    count_mirror, count_host = 0, 0
+    # iterate over rows of X and T
+    for _, x_and_t in X_and_T.iterrows():
         proba_assigned_to_host = f_assigned_to_host(
-            X.iloc[i, :], T[i], np.random.normal()
+            x_and_t.drop("T"), x_and_t["T"], np.random.normal()
         )
         is_assigned_to_host = np.random.binomial(1, proba_assigned_to_host)  # 0 or 1
 
         if is_assigned_to_host and count_host < n_host:
-            for column_name in X.columns:
-                data_host[column_name].append(X.iloc[i][column_name])
-            data_host["T"].append(T[i])
+            data_host.loc[count_host] = x_and_t
             count_host += 1
         elif not is_assigned_to_host and count_mirror < n_mirror:
-            for column_name in X.columns:
-                data_mirror[column_name].append(X.iloc[i][column_name])
-            data_mirror["T"].append(T[i])
+            data_mirror.loc[count_mirror] = x_and_t
             count_mirror += 1
 
         if count_mirror == n_mirror and count_host == n_host:
             break
 
-    data_host = pd.DataFrame.from_dict(data_host)
-    data_mirror = pd.DataFrame.from_dict(data_mirror)
-
-    if len(data_mirror) != n_mirror:
-        print(f"len(data_mirror) n={len(data_mirror)} != n_mirror ({n_mirror})")
-    if len(data_host) != n_host:
-        print(f"len(data_host) n={len(data_host)} != n_host ({n_host})")
+    assert (
+        len(data_host) == n_host
+    ), f"Expected len(data_host) to be {n_host}, got {len(data_host)}"
+    assert (
+        len(data_mirror) == n_mirror
+    ), f"Expected len(data_mirror) to be {n_mirror}, got {len(data_mirror)}"
 
     design_data_host = generate_design_matrix(data_host, power_x, power_x_t)
     design_data_mirror = generate_design_matrix(data_mirror, power_x, power_x_t)
