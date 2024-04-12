@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Any, Callable
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
@@ -37,14 +37,16 @@ def generate_host_and_mirror(
     if n_host + n_mirror > X.shape[0]:
         raise ValueError("n_host + n_mirror > n_rct")
 
-    X_and_T = pd.concat([X, pd.DataFrame(T, columns=["T"])], axis=1)
+    XandT = pd.concat([X, pd.DataFrame(T, columns=["T"])], axis=1)
     # Initialize dataframes for the host and mirror
-    data_host = pd.DataFrame(index=range(n_host), columns=[*X.columns] + ["T"])
-    data_mirror = pd.DataFrame(index=range(n_mirror), columns=[*X.columns] + ["T"])
+    data_host = pd.DataFrame(index=range(n_host), columns=XandT.columns, dtype=float)
+    data_mirror = pd.DataFrame(
+        index=range(n_mirror), columns=XandT.columns, dtype=float
+    )
 
     count_mirror, count_host = 0, 0
     # iterate over rows of X and T
-    for _, x_and_t in X_and_T.iterrows():
+    for _, x_and_t in XandT.iterrows():
         proba_assigned_to_host = f_assigned_to_host(
             x_and_t.drop("T"), x_and_t["T"], np.random.normal()
         )
@@ -236,7 +238,7 @@ def generate_synthetic_data_varying_sample_size(data_parameters, print=True):
 
 
 def generate_exact_synthetic_data_varying_sample_size(
-    data_parameters,
+    data_parameters: dict[str, Any]
 ) -> dict[int, dict]:
 
     (
@@ -271,8 +273,8 @@ def generate_exact_synthetic_data_varying_sample_size(
     data = {}
 
     for length in n_both_candidates_list:
-        X_rct, T_rct = generate_rct(x_distributions)
-        design_data_host, design_data_mirror = generate_host_and_mirror(
+        X_rct, T_rct = generate_rct(x_distributions)  # OK
+        design_data_host, _ = generate_host_and_mirror(
             X_rct,
             T_rct,
             p_assigned_to_cand2,
@@ -282,17 +284,13 @@ def generate_exact_synthetic_data_varying_sample_size(
             power_x_t,
             outcome_function,
             std_true_y,
-        )
-        number_x_features = 1 + np.shape(X_rct)[1]
-        X_host = design_data_host.iloc[:, :number_x_features]
+        )  # mirror isn't used.
+        # get the covariates only (no intercept)
+        X_host = design_data_host[X_rct.columns]
 
-        # exact_complementary
-        complementary_treat = pd.DataFrame(
-            [1 if bit == 0 else 0 for bit in design_data_host["T"]], columns=["T"]
-        )
-        data_complementary = pd.concat(
-            [X_host.iloc[:, 1:], complementary_treat], axis=1
-        )
+        # create the exact complementary treatment:
+        data_complementary = X_host.copy()
+        data_complementary["T"] = 1.0 - design_data_host["T"]
         design_data_exact_complementary = generate_design_matrix(
             data_complementary, power_x, power_x_t
         )
@@ -303,9 +301,9 @@ def generate_exact_synthetic_data_varying_sample_size(
         # exact_twin
         design_data_exact_twin = design_data_host.copy()
 
-        # exact_twin_untreated
-        untreated = pd.DataFrame([0] * len(complementary_treat), columns=["T"])
-        data_exact_twin_untreated = pd.concat([X_host.iloc[:, 1:], untreated], axis=1)
+        # exact_twin_untreated: Same covariates but no treatment
+        data_exact_twin_untreated = X_host.copy()
+        data_exact_twin_untreated["T"] = 0.0
         design_data_exact_twin_untreated = generate_design_matrix(
             data_exact_twin_untreated, power_x, power_x_t
         )
@@ -313,9 +311,9 @@ def generate_exact_synthetic_data_varying_sample_size(
             design_data_exact_twin_untreated, outcome_function, std_true_y
         )
 
-        # exact_twin_treated
-        treated = pd.DataFrame([1] * len(complementary_treat), columns=["T"])
-        data_exact_twin_treated = pd.concat([X_host.iloc[:, 1:], treated], axis=1)
+        # exact_twin_treated:  Same covariates but all treatment
+        data_exact_twin_treated = X_host.copy()
+        data_exact_twin_treated["T"] = 1.0
         design_data_exact_twin_treated = generate_design_matrix(
             data_exact_twin_treated, power_x, power_x_t
         )
@@ -324,7 +322,6 @@ def generate_exact_synthetic_data_varying_sample_size(
         )
 
         ### if needed, expansion
-
         num_samples_needed = length - len(X_host)
         if num_samples_needed > 0:
 
