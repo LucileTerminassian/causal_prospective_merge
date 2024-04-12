@@ -5,19 +5,10 @@ import matplotlib.pyplot as plt
 from scipy.stats import entropy, gaussian_kde
 import sys
 
-def generate_rct(n_global, x_distributions):
-    # Generate X
-    dim_x = len(x_distributions)
-    dict_x = {}
-    for name, x_column in x_distributions.items():
-        dict_x[name] = x_column
-    # for i in range(dim_x):
-        # x = x_distributions[i]
-        # dict_x[f"X{i}"] = x
-    X = pd.DataFrame.from_dict(dict_x)
-    # Generate T
-    T = np.random.randint(0, 2, size=n_global)
-    
+def generate_rct(x_distributions: dict[str, np.ndarray]):
+    X = pd.DataFrame.from_dict(x_distributions)
+    n_global = X.shape[0]
+    T = np.random.randint(0, 2, size=n_global)  # Generate T
     return X, T
 
 # Probability functions
@@ -195,106 +186,22 @@ def add_outcome(data, outcome_function, scale):
 
     return data
 
-def generate_synthetic_data_varying_sample_size(data_parameters, print=True):
+def generate_data_varying_sample_size(data_parameters, x_distributions=None, X=None, T=None):
 
     
-    n_both_candidates_list, proportion, n_rct_before_split, x_distributions, p_assigned_to_cand2 = data_parameters['n_both_candidates_list'], \
-            data_parameters['proportion'], data_parameters['n_rct_before_split'], data_parameters['x_distributions'], data_parameters['p_assigned_to_cand2'], 
+    n_both_candidates_list, proportion, x_distributions, p_assigned_to_cand2 = data_parameters['n_both_candidates_list'], \
+            data_parameters['proportion'], data_parameters['x_distributions'], data_parameters['p_assigned_to_cand2'], 
     n_host, power_x, power_x_t, outcome_function, std_true_y, causal_param_first_index = data_parameters['n_host'], data_parameters['power_x'], \
             data_parameters['power_x_t'], data_parameters['outcome_function'], data_parameters['std_true_y'], data_parameters['causal_param_first_index']
     
     data = {}
 
     for length in n_both_candidates_list:
-
-        X_rct, T_rct = generate_rct(n_rct_before_split, x_distributions)
-        design_data_host, design_data_mirror = generate_host_and_mirror(X_rct, T_rct, p_assigned_to_cand2, n_host, length, power_x, power_x_t, outcome_function, std_true_y)
-
-        pre_X_cand2, pre_T_cand2 = generate_rct(n_rct_before_split, x_distributions)
-        design_data_cand2 = generate_cand2(pre_X_cand2, pre_T_cand2, p_assigned_to_cand2, proportion*length, \
-                                            power_x, power_x_t, outcome_function, std_true_y)
-       
-
-        data[length] = {'host': design_data_host, 'mirror': design_data_mirror, 'cand2': design_data_cand2}
-
-    return data
-
-def generate_exact_synthetic_data_varying_sample_size(data_parameters):
-
-    n_both_candidates_list, proportion, n_rct_before_split, x_distributions, p_assigned_to_cand2 = data_parameters['n_both_candidates_list'], \
-            data_parameters['proportion'], data_parameters['n_rct_before_split'], data_parameters['x_distributions'], data_parameters['p_assigned_to_cand2'], 
-    n_host, power_x, power_x_t, outcome_function, std_true_y, causal_param_first_index = data_parameters['n_host'], data_parameters['power_x'], \
-            data_parameters['power_x_t'], data_parameters['outcome_function'], data_parameters['std_true_y'], data_parameters['causal_param_first_index']
-    
-    data = {}
-
-    for length in n_both_candidates_list:
-
-        X_rct, T_rct = generate_rct(n_rct_before_split, x_distributions)
-        design_data_host, design_data_mirror = generate_host_and_mirror(X_rct, T_rct, p_assigned_to_cand2, n_host, length, power_x, power_x_t, outcome_function, std_true_y)
-        number_x_features = 1 + np.shape(X_rct)[1]
-        X_host = design_data_host.iloc[:, :number_x_features]
-
-        #exact_complementary
-        complementary_treat = pd.DataFrame([1 if bit == 0 else 0 for bit in design_data_host['T']], columns=['T'])
-        data_complementary = pd.concat([X_host.iloc[:,1:], complementary_treat], axis=1)
-        design_data_exact_complementary = generate_design_matrix(data_complementary, power_x, power_x_t)
-        design_data_exact_complementary = add_outcome(design_data_exact_complementary, outcome_function, std_true_y)
-
-        #exact_twin
-        design_data_exact_twin = design_data_host.copy()
-
-        #exact_twin_untreated
-        untreated =  pd.DataFrame([0] * len(complementary_treat), columns=['T'])
-        data_exact_twin_untreated = pd.concat([X_host.iloc[:,1:], untreated], axis=1)
-        design_data_exact_twin_untreated = generate_design_matrix(data_exact_twin_untreated, power_x, power_x_t)
-        design_data_exact_twin_untreated = add_outcome(design_data_exact_twin_untreated, outcome_function, std_true_y)
-
-        #exact_twin_treated
-        treated =  pd.DataFrame([1] * len(complementary_treat), columns=['T'])
-        data_exact_twin_treated = pd.concat([X_host.iloc[:,1:], treated], axis=1)
-        design_data_exact_twin_treated = generate_design_matrix(data_exact_twin_treated, power_x, power_x_t)
-        design_data_exact_twin_treated = add_outcome(design_data_exact_twin_treated, outcome_function, std_true_y)
-
-
-        ### if needed, expansion
-
-        num_samples_needed = length - len(X_host)
-        if num_samples_needed > 0:
-             
-             sampled_data_complementary = design_data_exact_complementary.sample(n=num_samples_needed, replace=True)
-             design_data_exact_complementary = pd.concat([design_data_exact_complementary, sampled_data_complementary], ignore_index=True)
-
-             sampled_data_twin = design_data_exact_twin.sample(n=num_samples_needed, replace=True)
-             design_data_exact_twin = pd.concat([design_data_exact_twin, sampled_data_twin], ignore_index=True)
-
-             sampled_data_exact_twin_untreated = design_data_exact_twin_untreated.sample(n=num_samples_needed, replace=True)
-             design_data_exact_twin_untreated = pd.concat([design_data_exact_twin_untreated, sampled_data_exact_twin_untreated], ignore_index=True)
-
-             sampled_data_exact_twin_treated = design_data_exact_twin_treated.sample(n=num_samples_needed, replace=True)
-             design_data_exact_twin_treated = pd.concat([design_data_exact_twin_treated, sampled_data_exact_twin_treated], ignore_index=True)
-
-        
-        data[length] = {'host': design_data_host, 'exact_complementary': design_data_exact_complementary, 'exact_twin': design_data_exact_twin, \
-                        'exact_twin_untreated': design_data_exact_twin_untreated, 'exact_twin_treated': design_data_exact_twin_treated}
-        
-
-    return data
-
-def generate_data_from_real_varying_sample_size(X, T, data_parameters):
-
-    
-    n_both_candidates_list, proportion, p_assigned_to_cand2 = data_parameters['n_both_candidates_list'], \
-            data_parameters['proportion'], data_parameters['p_assigned_to_cand2'], 
-    n_host, power_x, power_x_t, outcome_function, std_true_y = data_parameters['n_host'], data_parameters['power_x'], \
-            data_parameters['power_x_t'], data_parameters['outcome_function'], data_parameters['std_true_y']
-    
-    data = {}
-
-    for length in n_both_candidates_list:
+        if X is None: #synthetic
+            X, T = generate_rct(x_distributions)
+            pre_X_cand2, pre_T_cand2 = generate_rct(x_distributions)
 
         design_data_host, design_data_mirror = generate_host_and_mirror(X, T, p_assigned_to_cand2, n_host, length, power_x, power_x_t, outcome_function, std_true_y)
-
         design_data_cand2 = generate_cand2(X, T, p_assigned_to_cand2, proportion*length, \
                                             power_x, power_x_t, outcome_function, std_true_y)
        
@@ -304,7 +211,8 @@ def generate_data_from_real_varying_sample_size(X, T, data_parameters):
     return data
 
 
-def generate_exact_real_data_varying_sample_size(X, T, data_parameters):
+
+def generate_exact_data_varying_sample_size(data_parameters, x_distributions=None, X=None, T=None):
 
     n_both_candidates_list, p_assigned_to_cand2 = data_parameters['n_both_candidates_list'], data_parameters['p_assigned_to_cand2']
     n_host, power_x, power_x_t, outcome_function, std_true_y = data_parameters['n_host'], data_parameters['power_x'], \
@@ -314,6 +222,8 @@ def generate_exact_real_data_varying_sample_size(X, T, data_parameters):
 
     for length in n_both_candidates_list:
 
+        if X is None: #synthetic
+            X, T = generate_rct(x_distributions)
         design_data_host, design_data_mirror = generate_host_and_mirror(X, T, p_assigned_to_cand2, n_host, length, power_x, power_x_t, outcome_function, std_true_y)
         number_x_features = 1 + np.shape(X)[1]
         X_host = design_data_host.iloc[:, :number_x_features]
