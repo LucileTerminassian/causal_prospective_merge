@@ -221,8 +221,8 @@ def bart_eig_from_samples_varying_sample_size(data, data_parameters, prior_hyper
     n_both_candidates_list, proportion, = data_parameters['n_both_candidates_list'],  data_parameters['proportion']
     causal_param_first_index = data_parameters['causal_param_first_index']
 
-    n_samples_outer_expectation, n_samples_inner_expectation, n_causal_inner_exp, n_causal_outer_exp = sampling_parameters['n_samples_outer_expectation'],\
-        sampling_parameters['n_samples_inner_expectation'], sampling_parameters['n_causal_inner_exp'], sampling_parameters['n_causal_outer_exp']
+    n_samples_outer_expectation, n_samples_inner_expectation, n_causal_inner_exp, n_causal_outer_exp = sampling_parameters['n_samples_outer_expectation_obs'],\
+        sampling_parameters['n_samples_inner_expectation_obs'], sampling_parameters['n_samples_inner_expectation_caus'], sampling_parameters['n_samples_outer_expectation_caus']
 
     for length in n_both_candidates_list:
         
@@ -231,6 +231,8 @@ def bart_eig_from_samples_varying_sample_size(data, data_parameters, prior_hyper
         
         X_mirror, T_mirror = data[length]['mirror'].drop(columns=['Y', 'T']).values, data[length]['mirror']['T'].values 
         X_cand2, T_cand2 = data[length]['cand2'].drop(columns=['Y', 'T']).values, data[length]['mirror']['T'].values 
+
+        T_host,T_mirror,T_cand2 =   T_host.astype(np.int32),T_mirror.astype(np.int32),T_cand2.astype(np.int32)
 
         bcf = BayesianCausalForest(prior_hyperparameters, predictive_model_parameters={"num_trees_pr":200,"num_trees_trt":100}, \
                                    conditional_model_param={"num_trees_pr":200})
