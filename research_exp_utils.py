@@ -14,109 +14,61 @@ from eig_comp_utils import *
 
 
 def linear_eig_closed_form_varying_sample_size(
-    data, data_parameters, sigma_rand_error, prior_hyperparameters, n_mc, verbose=True
+    data: dict[int, dict],
+    data_parameters: dict[str, Any],
+    prior_hyperparameters: dict[str, Any],  # passed to BayesianLinearRegression
+    verbose: bool = True,
 ):
+    # this now works with both exact and "non-exact" `data`
+    sample_sizes = data_parameters["n_both_candidates_list"]
+    condidates_names = data[sample_sizes[0]].keys() - ["host"]
+    # dict of the form {candidate_name: {sample_size: EIG}}
+    EIG_obs = {name: [] for name in condidates_names}
+    EIG_caus = {name: [] for name in condidates_names}
 
-    n_both_candidates_list, proportion = (
-        data_parameters["n_both_candidates_list"],
-        data_parameters["proportion"],
-    )
-    std_true_y, causal_param_first_index = (
-        data_parameters["std_true_y"],
-        data_parameters["causal_param_first_index"],
-    )
-
-    results = {
-        "EIG_obs_closed_form_mirror": [],
-        "EIG_obs_closed_form_cand2": [],
-        "EIG_caus_closed_form_mirror": [],
-        "EIG_caus_closed_form_cand2": [],
-    }
-
-    for length in n_both_candidates_list:
-
-        n_both_candidates_list, proportion, causal_param_first_index = (
-            data_parameters["n_both_candidates_list"],
-            data_parameters["proportion"],
-            data_parameters["causal_param_first_index"],
-        )
-
+    for length in sample_sizes:
+        dlen = data[length]  # for convenience
         bayes_reg = BayesianLinearRegression(prior_hyperparameters)
-        bayes_reg.set_causal_index(causal_param_first_index)
+        bayes_reg.set_causal_index(data_parameters["causal_param_first_index"])
 
         ### Bayesian update on host data using closed form
-        X_host, Y_host = torch.from_numpy(
-            data[length]["host"].drop(columns=["Y"]).values
-        ), torch.from_numpy(data[length]["host"]["Y"].values)
+        X_host = torch.from_numpy(dlen["host"].drop(columns=["Y"]).values)
+        Y_host = torch.from_numpy(dlen["host"]["Y"].values)
+        # is this doing anything to the bayes_reg model? because `post_host_parameters`
+        # is not used anywhere below
         post_host_parameters = bayes_reg.fit(X_host, Y_host)
 
-        # beta_post_host_vec = post_host_parameters['posterior_mean'].flatten()  # Extract posterior mean
-        # cov_matrix_post_host = post_host_parameters['posterior_cov_matrix']
-        # X_torch, Y_torch = torch.tensor(X_host.values), torch.tensor(Y_host.values)
-        # mcmc_host = MCMC_Bayesian_update(X_torch = X_torch, Y_torch = Y_torch, model =model_normal,
-        #             mu_0= beta_0, sigma_prior = sigma_prior, sigma_rand_error = sigma_rand_error,
-        #             sigma_rand_error_fixed = True, n_mcmc = n_mc, warmup_steps = warmup_steps, max_tree_depth=max_tree_depth)
-
-        X_mirror = torch.from_numpy(data[length]["mirror"].drop(columns=["Y"]).values)
-        X_cand2 = torch.from_numpy(data[length]["cand2"].drop(columns=["Y"]).values)
-
         if verbose:
+            print(f"For a sample size of {length}")
+            print(f" % treated in host: {int(100 * dlen['host']['T'].mean())}%")
 
-            T_host, T_mirror, T_cand2 = (
-                data[length]["host"]["T"],
-                data[length]["mirror"]["T"],
-                data[length]["cand2"]["T"],
-            )
+        for cand in condidates_names:
+            X_cand = torch.from_numpy(dlen[cand].drop(columns=["Y"]).values)
 
-            percent_treated_host = 100 * sum(T_host) / len(T_host)
-            percent_treated_mirror = 100 * sum(T_mirror) / len(T_mirror)
-            percent_treated_cand2 = 100 * sum(T_cand2) / len(T_cand2)
+            if verbose:
+                print(f" % treated in {cand}: {int(100 * dlen[cand]['T'].mean())}%")
 
-            print("For a sample size in mirror and host of " + str(length))
-            print(f"Percentage of treated in host: {percent_treated_host}%")
-            print(f"Percentage of treated in mirror: {percent_treated_mirror}%")
-            print(f"Percentage of treated in cand2: {percent_treated_cand2}%")
+            EIG_obs[cand].append(bayes_reg.closed_form_obs_EIG(X_cand))
+            EIG_caus[cand].append(bayes_reg.closed_form_causal_EIG(X_cand))
 
-        results["EIG_obs_closed_form_mirror"].append(
-            bayes_reg.closed_form_obs_EIG(X_mirror)
-        )
-        results["EIG_obs_closed_form_cand2"].append(
-            bayes_reg.closed_form_obs_EIG(X_cand2)
-        )
-
-        results["EIG_caus_closed_form_mirror"].append(
-            bayes_reg.closed_form_causal_EIG(X_mirror)
-        )
-        results["EIG_caus_closed_form_cand2"].append(
-            bayes_reg.closed_form_causal_EIG(X_cand2)
-        )
-
-    EIG_obs_closed_form = np.vstack(
-        (results["EIG_obs_closed_form_mirror"], results["EIG_obs_closed_form_cand2"])
-    )
-    EIG_caus_closed_form = np.vstack(
-        (results["EIG_caus_closed_form_mirror"], results["EIG_caus_closed_form_cand2"])
-    )
-
-    return EIG_obs_closed_form, EIG_caus_closed_form
+    EIG_obs_flattened = np.vstack(
+        [EIG_obs[cand] for cand in condidates_names]
+    )  # [number of candaidates x number of sample sizes]
+    EIG_caus_flattened = np.vstack(
+        [EIG_caus[cand] for cand in condidates_names]
+    )  # [number of candaidates x number of sample sizes]
+    return EIG_obs_flattened, EIG_caus_flattened
 
 
 ## exact
-
-
 def linear_eig_closed_form_exact_datasets(
-    data, data_parameters, sigma_rand_error, prior_hyperparameters, n_mc
+    data,
+    data_parameters,
+    sigma_rand_error,  # unused
+    prior_hyperparameters,
+    n_mc,  # unused
 ):
-
-    n_both_candidates_list, proportion = (
-        data_parameters["n_both_candidates_list"],
-        data_parameters["proportion"],
-    )
-    std_true_y, causal_param_first_index = (
-        data_parameters["std_true_y"],
-        data_parameters["causal_param_first_index"],
-    )
-
+    ## is the difference only in the names of the dataframes??
     dict_results_obs = {
         "complementary": [],
         "twin": [],
@@ -130,10 +82,10 @@ def linear_eig_closed_form_exact_datasets(
         "twin_untreated": [],
     }
 
-    for length in n_both_candidates_list:
+    for length in data_parameters["n_both_candidates_list"]:
 
         bayes_reg = BayesianLinearRegression(prior_hyperparameters)
-        bayes_reg.set_causal_index(causal_param_first_index)
+        bayes_reg.set_causal_index(data_parameters["causal_param_first_index"])
 
         ### Bayesian update on host data using closed form
         X_host, Y_host = torch.from_numpy(
@@ -594,3 +546,43 @@ def bart_eig_from_samples_exact_datasets(
         dict_results_obs["twin_untreated"].append(results_twin_untreated["Causal EIG"])
 
     return dict_results_obs, dict_results_caus
+
+
+if __name__ == "__main__":
+    from rct_data_generator import _main
+
+    _, data_parameters = _main()
+    data = generate_synthetic_data_varying_sample_size(data_parameters)
+    print(data)
+
+    sigma_prior = 1
+    sigma_rand_error = 1
+    prior_mean = np.array([0, 1, 0, 0, 1, 0, 0, 0])
+
+    # Number of samples used to estimate outer expectation
+    n_samples_for_expectation = 50
+    m_samples_for_expectation = 1000
+
+    # Incorporating sqrt constraint into MCMC samples
+    n_mc = n_samples_for_expectation * (m_samples_for_expectation + 1)
+
+    beta_0, sigma_0_sq, inv_cov_0 = (
+        prior_mean,
+        sigma_rand_error**2,
+        1 / sigma_prior * np.eye(len(prior_mean)),
+    )
+    prior_hyperparameters = {
+        "beta_0": beta_0,
+        "sigma_0_sq": sigma_0_sq,
+        "inv_cov_0": inv_cov_0,
+    }
+
+    EIGs = linear_eig_closed_form_varying_sample_size(  # CHECK what this does
+        data,
+        data_parameters,
+        sigma_rand_error,  # unused
+        prior_hyperparameters,
+        n_mc,  # unused
+        verbose=True,
+    )
+    print(EIGs)

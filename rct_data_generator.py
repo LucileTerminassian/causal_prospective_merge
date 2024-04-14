@@ -357,7 +357,7 @@ def generate_data_from_real_varying_sample_size(
     )
 
 
-if __name__ == "__main__":
+def _main():
     n_both_candidates_list = [200]  # , 500, 1000
     proportion = 1  # n_cand2 = prorportion * n_both_candidates_list
     std_true_y = 1
@@ -366,8 +366,6 @@ if __name__ == "__main__":
 
     n_rct_before_split = 10**5
     n_host = 200
-    sigma_prior = 1
-    sigma_rand_error = 1
 
     power_x, power_x_t = 1, 1
     causal_param_first_index = 4
@@ -394,12 +392,13 @@ if __name__ == "__main__":
 
     p_assigned_to_host = lambda X, T, eps: sigmoid(
         1 + 2 * X["X_0"] - X["X_1"] + 2 * T + eps
-    )
+    )  # not used
     p_assigned_to_cand2 = lambda X, T, eps: sigmoid(
         1 + 2 * X["X_0"] - X["X_1"] + 2 * T + eps
     )
     # p_assigned_to_cand2 = lambda X_0, X_1, T, eps: sigmoid(1 - 2*X_0 + eps)
 
+    # doesn't have p_assigned_to_host!
     data_parameters = {
         "n_both_candidates_list": n_both_candidates_list,
         "proportion": proportion,
@@ -414,4 +413,9 @@ if __name__ == "__main__":
         "causal_param_first_index": causal_param_first_index,
     }
     data = generate_exact_synthetic_data_varying_sample_size(data_parameters)
+    return data, data_parameters
+
+
+if __name__ == "__main__":
+    data = _main()
     print(data)
