@@ -212,46 +212,35 @@ def generate_cand2(
     return design_cand2
 
 
-def generate_synthetic_data_varying_sample_size(data_parameters: dict[str, Any]):
-
-    (
-        n_both_candidates_list,
-        proportion,
-        n_rct_before_split,
-        x_distributions,
-        p_assigned_to_cand2,
-    ) = (
-        data_parameters["n_both_candidates_list"],
-        data_parameters["proportion"],
-        data_parameters["n_rct_before_split"],
-        data_parameters["x_distributions"],
-        data_parameters["p_assigned_to_cand2"],
-    )
-    (
-        n_host,
-        power_x,
-        power_x_t,
-        outcome_function,
-        std_true_y,
-        causal_param_first_index,
-    ) = (
-        data_parameters["n_host"],
-        data_parameters["power_x"],
-        data_parameters["power_x_t"],
-        data_parameters["outcome_function"],
-        data_parameters["std_true_y"],
-        data_parameters["causal_param_first_index"],
-    )
+def generate_synthetic_data_varying_sample_size(
+    data_parameters: dict[str, Any],
+    X_rct: pd.DataFrame | None = None,
+    T_rct: np.ndarray | None = None,
+) -> dict[int, dict]:
+    x_distributions = data_parameters["x_distributions"]
+    p_assigned_to_cand2 = data_parameters["p_assigned_to_cand2"]
+    power_x = data_parameters["power_x"]
+    power_x_t = data_parameters["power_x_t"]
+    outcome_function = data_parameters["outcome_function"]
+    std_true_y = data_parameters["std_true_y"]
 
     data = {}
 
-    for length in n_both_candidates_list:
-        X_rct, T_rct = generate_rct(x_distributions)
+    for length in data_parameters["n_both_candidates_list"]:
+        # should the generation be outside of the loop actually?
+        if X_rct is None and T_rct is None:
+            X_rct, T_rct = generate_rct(x_distributions)
+            pre_X_cand2, pre_T_cand2 = generate_rct(x_distributions)
+        else:
+            assert X_rct is not None and T_rct is not None, "Need both X_rct and T_rct"
+            pre_X_cand2 = X_rct
+            pre_T_cand2 = T_rct
+
         design_data_host, design_data_mirror = generate_host_and_mirror(
             X=X_rct,
             T=T_rct,
-            f_assigned_to_host=p_assigned_to_cand2,
-            n_host=n_host,
+            f_assigned_to_host=p_assigned_to_cand2,  # host?
+            n_host=data_parameters["n_host"],
             n_mirror=length,
             power_x=power_x,
             power_x_t=power_x_t,
@@ -259,12 +248,11 @@ def generate_synthetic_data_varying_sample_size(data_parameters: dict[str, Any])
             std_true_y=std_true_y,
         )
 
-        pre_X_cand2, pre_T_cand2 = generate_rct(x_distributions)
         design_data_cand2 = generate_cand2(
             pre_X_cand2,
             pre_T_cand2,
             p_assigned_to_cand2,
-            proportion * length,
+            data_parameters["proportion"] * length,
             power_x,
             power_x_t,
             outcome_function,
@@ -373,39 +361,15 @@ def generate_exact_real_data_varying_sample_size(
     )
 
 
-def generate_data_from_real_varying_sample_size(X, T, data_parameters):
-    # same as above but will use generate_cand2 as opposed to "exact"
-    data = {}
-
-    for length in data_parameters["n_both_candidates_list"]:
-        design_data_host, design_data_mirror = generate_host_and_mirror(
-            X,
-            T,
-            data_parameters["p_assigned_to_cand2"],
-            data_parameters["n_host"],
-            length,
-            data_parameters["power_x"],
-            data_parameters["power_x_t"],
-            data_parameters["outcome_function"],
-            data_parameters["std_true_y"],
-        )
-        design_data_cand2 = generate_cand2(
-            X,
-            T,
-            data_parameters["p_assigned_to_cand2"],
-            data_parameters["proportion"] * length,
-            data_parameters["power_x"],
-            data_parameters["power_x_t"],
-            data_parameters["outcome_function"],
-            data_parameters["std_true_y"],
-        )
-
-        data[length] = {
-            "host": design_data_host,
-            "mirror": design_data_mirror,
-            "cand2": design_data_cand2,
-        }
-    return data
+def generate_data_from_real_varying_sample_size(
+    X: pd.DataFrame, T: np.ndarray, data_parameters: dict[str, Any]
+) -> dict[int, dict]:
+    # same as `generate_synthetic_data_varying_sample_size` but with
+    # "real" data, passed as X and T, whilst generate_synthetic_data_varying_sample_size
+    # would sample those
+    return generate_synthetic_data_varying_sample_size(
+        data_parameters, X_rct=X, T_rct=T
+    )
 
 
 if __name__ == "__main__":
