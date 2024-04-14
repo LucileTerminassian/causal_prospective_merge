@@ -189,7 +189,7 @@ def compute_EIG_obs_closed_form(X, cov_matrix_prior, sigma_rand):
     sign, log_det_term = np.linalg.slogdet(
         X @ ((cov_matrix_prior) @ X.T) + (sigma_rand**2) * np.eye(n_e)
     )
-    log_sigma_term = n_e * (np.log(sigma_rand))
+    log_sigma_term = n_e * np.log(sigma_rand)
     eig = 0.5 * log_det_term - log_sigma_term
 
     return eig
@@ -208,23 +208,48 @@ def compute_EIG_causal_closed_form(
 ):
 
     n_e = len(X)
-    sigma_a = cov_matrix_prior[:causal_param_first_index, 0:causal_param_first_index]
-    sigma_b = cov_matrix_prior[causal_param_first_index:, causal_param_first_index:]
-    sigma_c = cov_matrix_prior[:causal_param_first_index, causal_param_first_index:]
-    cov_matrix_prior_nc = sigma_b - np.dot(
+    num_causal = X.shape[1] - causal_param_first_index
+    num_non_causal = causal_param_first_index
+
+    sigma_a = cov_matrix_prior[
+        :causal_param_first_index, :causal_param_first_index
+    ]  # # [number of non-causal; number of non-causal]
+    sigma_b = cov_matrix_prior[
+        causal_param_first_index:, causal_param_first_index:
+    ]  # [number of causal; number of causal]
+
+    sigma_c = cov_matrix_prior[
+        :causal_param_first_index, causal_param_first_index:
+    ]  # [number of non-causal; number of causal]
+    assert (
+        sigma_c.shape == (num_non_causal, num_causal)
+        and sigma_a.shape == (num_non_causal, num_non_causal)
+        and sigma_b.shape == (num_causal, num_causal)
+    ), "Shape mismatch!"
+
+    # I think this is wrong, I think this gives cov_matrix causal?
+    # changing name to cov_matrix_prior_c
+    cov_matrix_prior_c = sigma_b - np.dot(
         np.dot(sigma_c.T, np.linalg.inv(sigma_a)), sigma_c
-    )
+    )  # [number of causal; number of causal]
+
+    # this should be the non-causal I think... [?]
+    cov_matrix_prior_nc = sigma_a - np.dot(
+        np.dot(sigma_c, np.linalg.inv(sigma_b)), sigma_c.T
+    )  # [number of non-causal; number of non-causal]
+    assert cov_matrix_prior_nc.shape == (num_non_causal, num_non_causal)
 
     sign, log_gen_term = np.linalg.slogdet(
         X @ ((cov_matrix_prior) @ X.T) + (sigma_rand**2) * np.eye(n_e)
-    )
-
+    )  # scalar
+    print("log_gen_term", log_gen_term)
     # phi_nc(X) takes only non-causal columns in X
-    phi_nc_X = X[:, :causal_param_first_index]
+    phi_nc_X = X[:, :causal_param_first_index]  # [n_e, number of non-causal]
 
     sign, log_nc_term = np.linalg.slogdet(
         phi_nc_X @ ((cov_matrix_prior_nc) @ phi_nc_X.T) + (sigma_rand**2) * np.eye(n_e)
-    )
+    )  # scalar
+
     eig = 0.5 * (log_gen_term - log_nc_term)
 
     return eig

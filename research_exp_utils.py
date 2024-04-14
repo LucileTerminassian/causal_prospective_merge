@@ -10,8 +10,6 @@ from eig_comp_utils import *
 
 ############################ CLOSED FORM
 
-## noisy
-
 
 def linear_eig_closed_form_varying_sample_size(
     data: dict[int, dict],
@@ -34,9 +32,8 @@ def linear_eig_closed_form_varying_sample_size(
         ### Bayesian update on host data using closed form
         X_host = torch.from_numpy(dlen["host"].drop(columns=["Y"]).values)
         Y_host = torch.from_numpy(dlen["host"]["Y"].values)
-        # is this doing anything to the bayes_reg model? because `post_host_parameters`
-        # is not used anywhere below
-        post_host_parameters = bayes_reg.fit(X_host, Y_host)
+        # fit the posterior (updates the params in the model class)
+        bayes_reg.fit(X_host, Y_host)
 
         if verbose:
             print(f"For a sample size of {length}")
@@ -44,104 +41,16 @@ def linear_eig_closed_form_varying_sample_size(
 
         for cand in condidates_names:
             X_cand = torch.from_numpy(dlen[cand].drop(columns=["Y"]).values)
-
             if verbose:
                 print(f" % treated in {cand}: {int(100 * dlen[cand]['T'].mean())}%")
 
             EIG_obs[cand].append(bayes_reg.closed_form_obs_EIG(X_cand))
             EIG_caus[cand].append(bayes_reg.closed_form_causal_EIG(X_cand))
 
-    EIG_obs_flattened = np.vstack(
-        [EIG_obs[cand] for cand in condidates_names]
-    )  # [number of candaidates x number of sample sizes]
-    EIG_caus_flattened = np.vstack(
-        [EIG_caus[cand] for cand in condidates_names]
-    )  # [number of candaidates x number of sample sizes]
-    return EIG_obs_flattened, EIG_caus_flattened
-
-
-## exact
-def linear_eig_closed_form_exact_datasets(
-    data,
-    data_parameters,
-    sigma_rand_error,  # unused
-    prior_hyperparameters,
-    n_mc,  # unused
-):
-    ## is the difference only in the names of the dataframes??
-    dict_results_obs = {
-        "complementary": [],
-        "twin": [],
-        "twin_treated": [],
-        "twin_untreated": [],
-    }
-    dict_results_caus = {
-        "complementary": [],
-        "twin": [],
-        "twin_treated": [],
-        "twin_untreated": [],
-    }
-
-    for length in data_parameters["n_both_candidates_list"]:
-
-        bayes_reg = BayesianLinearRegression(prior_hyperparameters)
-        bayes_reg.set_causal_index(data_parameters["causal_param_first_index"])
-
-        ### Bayesian update on host data using closed form
-        X_host, Y_host = torch.from_numpy(
-            data[length]["host"].drop(columns=["Y"]).values
-        ), torch.from_numpy(data[length]["host"]["Y"].values)
-        post_host_parameters = bayes_reg.fit(X_host, Y_host)
-
-        # beta_post_host_vec = post_host_parameters['posterior_mean'].flatten()  # Extract posterior mean
-        # cov_matrix_post_host = post_host_parameters['posterior_cov_matrix']
-        # X_torch, Y_torch = torch.tensor(X_host.values), torch.tensor(Y_host.values)
-        # mcmc_host = MCMC_Bayesian_update(X_torch = X_torch, Y_torch = Y_torch, model =model_normal,
-        #             mu_0= beta_0, sigma_prior = sigma_prior, sigma_rand_error = sigma_rand_error,
-        #             sigma_rand_error_fixed = True, n_mcmc = n_mc, warmup_steps = warmup_steps, max_tree_depth=max_tree_depth)
-        # bayes_reg.closed_form_obs_EIG / bayes_reg.closed_form_causal_EIG
-
-        X_exact_complementary = torch.from_numpy(
-            data[length]["exact_complementary"].drop(columns=["Y"]).values
-        )
-        X_exact_twin = torch.from_numpy(
-            data[length]["exact_twin"].drop(columns=["Y"]).values
-        )
-        X_exact_twin_treated = torch.from_numpy(
-            data[length]["exact_twin_treated"].drop(columns=["Y"]).values
-        )
-        X_exact_twin_untreated = torch.from_numpy(
-            data[length]["exact_twin_untreated"].drop(columns=["Y"]).values
-        )
-
-        dict_results_obs["complementary"].append(
-            bayes_reg.closed_form_obs_EIG(X_exact_complementary)
-        )
-        dict_results_obs["twin"].append(bayes_reg.closed_form_obs_EIG(X_exact_twin))
-        dict_results_obs["twin_treated"].append(
-            bayes_reg.closed_form_obs_EIG(X_exact_twin_treated)
-        )
-        dict_results_obs["twin_untreated"].append(
-            bayes_reg.closed_form_obs_EIG(X_exact_twin_untreated)
-        )
-
-        dict_results_caus["complementary"].append(
-            bayes_reg.closed_form_causal_EIG(X_exact_complementary)
-        )
-        dict_results_caus["twin"].append(bayes_reg.closed_form_causal_EIG(X_exact_twin))
-        dict_results_caus["twin_treated"].append(
-            bayes_reg.closed_form_causal_EIG(X_exact_twin_treated)
-        )
-        dict_results_caus["twin_untreated"].append(
-            bayes_reg.closed_form_causal_EIG(X_exact_twin_untreated)
-        )
-
-    return dict_results_obs, dict_results_caus
+    return EIG_obs, EIG_caus
 
 
 #################################### FROM SAMPLES
-
-
 ## noisy
 
 
@@ -552,19 +461,15 @@ if __name__ == "__main__":
     from rct_data_generator import _main
 
     _, data_parameters = _main()
-    data = generate_synthetic_data_varying_sample_size(data_parameters)
-    print(data)
+    exact_data = generate_exact_synthetic_data_varying_sample_size(data_parameters)
 
-    sigma_prior = 1
-    sigma_rand_error = 1
+    sigma_prior = 1.0
+    sigma_rand_error = 1.0
     prior_mean = np.array([0, 1, 0, 0, 1, 0, 0, 0])
 
     # Number of samples used to estimate outer expectation
     n_samples_for_expectation = 50
     m_samples_for_expectation = 1000
-
-    # Incorporating sqrt constraint into MCMC samples
-    n_mc = n_samples_for_expectation * (m_samples_for_expectation + 1)
 
     beta_0, sigma_0_sq, inv_cov_0 = (
         prior_mean,
@@ -578,11 +483,9 @@ if __name__ == "__main__":
     }
 
     EIGs = linear_eig_closed_form_varying_sample_size(  # CHECK what this does
-        data,
+        exact_data,
         data_parameters,
-        sigma_rand_error,  # unused
         prior_hyperparameters,
-        n_mc,  # unused
         verbose=True,
     )
     print(EIGs)

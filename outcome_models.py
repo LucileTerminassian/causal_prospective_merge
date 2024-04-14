@@ -1,15 +1,10 @@
 import numpy as np
-import pandas as pd
-import scipy.stats as stats
-import matplotlib.pyplot as plt
-from scipy.stats import entropy, gaussian_kde, multivariate_normal
-import sys
+from scipy.stats import multivariate_normal
 import torch
 
 torch.set_default_tensor_type(torch.FloatTensor)  # set the default to float32
-import pyro
-import pyro.distributions as dist
-from pyro.infer import MCMC, NUTS
+
+
 from eig_comp_utils import (
     compute_EIG_causal_closed_form,
     compute_EIG_obs_closed_form,
@@ -25,17 +20,14 @@ from tqdm import tqdm
 
 
 def posterior_mean(X, y, sigma_sq, cov_posterior_inv):
-
     return 1 / sigma_sq * cov_posterior_inv @ (X.T @ y)
 
 
 def posterior_covariance_inv(X, sigma_sq, S0_inv):
-
     return 1 / sigma_sq * X.T @ X + S0_inv
 
 
 class BayesianLinearRegression:
-
     def __init__(self, prior_hyperparameters, model="linear_reg"):
         self.model = model
         self.prior_hyperparameters = prior_hyperparameters
@@ -213,7 +205,6 @@ class BayesianLinearRegression:
 
 
 class BayesianCausalForest:
-
     def __init__(
         self,
         prior_hyperparameters,

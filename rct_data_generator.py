@@ -20,7 +20,10 @@ def generate_rct(x_sampled_covariates: dict[str, np.ndarray]) -> pd.DataFrame:
 
 
 def generate_design_matrix(
-    data: pd.DataFrame, power_x: int = 1, power_x_t: int = 1
+    data: pd.DataFrame,
+    power_x: int = 1,
+    power_x_t: int = 1,
+    include_intercept: bool = True,
 ) -> pd.DataFrame:
     """
     Generate the design matrix from `data` with polynomial features of
@@ -43,7 +46,8 @@ def generate_design_matrix(
 
     # Initialize the design matrix
     X_prime = pd.DataFrame(index=range(n))
-    X_prime["intercept"] = 1.0  # interept column, set to 1
+    if include_intercept:
+        X_prime["intercept"] = 1.0  # interept column, set to 1
     X_prime = pd.concat([X_prime, X], axis=1)  # append X to X_prime
 
     # Concatenate X^i for i=2 upto power_x
@@ -58,13 +62,19 @@ def generate_design_matrix(
             colname = f"T*{col}**{i}" if i > 1 else f"T*{col}"
             X_prime[colname] = T * (X[col] ** i)
 
-    assert X_prime.shape == (n, 1 + d * power_x + 1 + d * power_x_t), "Shape mismatch"
+    assert X_prime.shape == (
+        n,
+        include_intercept + d * power_x + 1 + d * power_x_t,
+    ), "Shape mismatch"
 
     return X_prime
 
 
 def append_outcome(
-    data: pd.DataFrame, outcome_function: Callable, noise_scale: float
+    data: pd.DataFrame,
+    outcome_function: Callable,
+    noise_scale: float | None = None,
+    eps: np.ndarray | None = None,
 ) -> pd.DataFrame:
     """
     Generate y = outcome_function(X, T) + N(0, noise_scale)
@@ -79,7 +89,9 @@ def append_outcome(
     Returns:
         A dataframe with the outcome appended
     """
-    eps = np.random.normal(size=len(data), scale=noise_scale)
+    if eps is None:
+        assert noise_scale is not None, "Need noise_scale if eps is None"
+        eps = np.random.normal(size=len(data), scale=noise_scale)
     data["Y"] = outcome_function(data.drop(columns=["T"]), data["T"], eps)
     return data
 
@@ -98,6 +110,7 @@ def generate_host_and_mirror(
     power_x_t: int,
     outcome_function: Callable,
     std_true_y: float,
+    include_intercept: bool = True,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Generate host and mirror data for a synthetic RCT.
@@ -151,8 +164,12 @@ def generate_host_and_mirror(
         len(data_mirror) == n_mirror
     ), f"Expected len(data_mirror) to be {n_mirror}, got {len(data_mirror)}"
 
-    design_data_host = generate_design_matrix(data_host, power_x, power_x_t)
-    design_data_mirror = generate_design_matrix(data_mirror, power_x, power_x_t)
+    design_data_host = generate_design_matrix(
+        data_host, power_x, power_x_t, include_intercept
+    )
+    design_data_mirror = generate_design_matrix(
+        data_mirror, power_x, power_x_t, include_intercept
+    )
 
     design_data_host = append_outcome(design_data_host, outcome_function, std_true_y)
     design_data_mirror = append_outcome(
@@ -171,6 +188,7 @@ def generate_cand2(
     power_x_t: int,
     outcome_function: Callable,
     std_true_y: float,
+    include_intercept: bool = True,
 ) -> pd.DataFrame:
     if n_cand2 > XandT.shape[0]:
         raise ValueError("n_cand2 > n_global")
@@ -192,7 +210,9 @@ def generate_cand2(
     assert (
         len(data_cand2) == n_cand2
     ), f"Expected len(data_cand2) to be {n_cand2}, got {len(data_cand2)}"
-    design_cand2 = generate_design_matrix(data_cand2, power_x, power_x_t)
+    design_cand2 = generate_design_matrix(
+        data_cand2, power_x, power_x_t, include_intercept
+    )
     design_cand2 = append_outcome(design_cand2, outcome_function, std_true_y)
 
     return design_cand2
@@ -202,6 +222,7 @@ def generate_synthetic_data_varying_sample_size(
     data_parameters: dict[str, Any],
     X_rct: pd.DataFrame | None = None,
     T_rct: np.ndarray | None = None,
+    include_intercept: bool = True,
 ) -> dict[int, dict]:
     x_distributions = data_parameters["x_distributions"]
     p_assigned_to_cand2 = data_parameters["p_assigned_to_cand2"]
@@ -231,6 +252,7 @@ def generate_synthetic_data_varying_sample_size(
             power_x_t=power_x_t,
             outcome_function=outcome_function,
             std_true_y=std_true_y,
+            include_intercept=include_intercept,
         )
 
         design_data_cand2 = generate_cand2(
@@ -241,6 +263,7 @@ def generate_synthetic_data_varying_sample_size(
             power_x_t=power_x_t,
             outcome_function=outcome_function,
             std_true_y=std_true_y,
+            include_intercept=include_intercept,
         )
 
         data[length] = {
@@ -256,6 +279,7 @@ def generate_exact_synthetic_data_varying_sample_size(
     data_parameters: dict[str, Any],
     X_rct: pd.DataFrame | None = None,
     T_rct: np.ndarray | None = None,
+    include_intercept: bool = True,
 ) -> dict[int, dict]:
     n_host = data_parameters["n_host"]
     power_x = data_parameters["power_x"]
@@ -282,6 +306,7 @@ def generate_exact_synthetic_data_varying_sample_size(
             power_x_t=power_x_t,
             outcome_function=outcome_function,
             std_true_y=std_true_y,
+            include_intercept=include_intercept,
         )  # mirror isn't used.
         # get the covariates only (no intercept)
         X_host = design_data_host[XandT.columns]
@@ -291,7 +316,7 @@ def generate_exact_synthetic_data_varying_sample_size(
         data_complementary = X_host.copy()
         data_complementary["T"] = 1.0 - design_data_host["T"]  # overwrite T with 1 - T
         design_data_exact_complementary = generate_design_matrix(
-            data_complementary, power_x, power_x_t
+            data_complementary, power_x, power_x_t, include_intercept
         )
         design_data_exact_complementary = append_outcome(
             design_data_exact_complementary, outcome_function, std_true_y
@@ -304,7 +329,7 @@ def generate_exact_synthetic_data_varying_sample_size(
         data_exact_twin_untreated = X_host.copy()
         data_exact_twin_untreated["T"] = 0.0  # overwrite T with all 0s
         design_data_exact_twin_untreated = generate_design_matrix(
-            data_exact_twin_untreated, power_x, power_x_t
+            data_exact_twin_untreated, power_x, power_x_t, include_intercept
         )
         design_data_exact_twin_untreated = append_outcome(
             design_data_exact_twin_untreated, outcome_function, std_true_y
@@ -314,7 +339,7 @@ def generate_exact_synthetic_data_varying_sample_size(
         data_exact_twin_treated = X_host.copy()
         data_exact_twin_treated["T"] = 1.0  # overwrite T with all 1s
         design_data_exact_twin_treated = generate_design_matrix(
-            data_exact_twin_treated, power_x, power_x_t
+            data_exact_twin_treated, power_x, power_x_t, include_intercept
         )
         design_data_exact_twin_treated = append_outcome(
             design_data_exact_twin_treated, outcome_function, std_true_y
@@ -336,24 +361,30 @@ def generate_exact_synthetic_data_varying_sample_size(
 
 
 def generate_exact_real_data_varying_sample_size(
-    X: pd.DataFrame, T: np.ndarray, data_parameters: dict[str, Any]
+    X: pd.DataFrame,
+    T: np.ndarray,
+    data_parameters: dict[str, Any],
+    include_intercept: bool = True,
 ) -> dict[int, dict]:
     # same as generate_exact_synthetic_data_varying_sample_size but with
     # "real" data, passed as X and T, whilst
     # generate_exact_synthetic_data_varying_sample_size would sample those
     return generate_exact_synthetic_data_varying_sample_size(
-        data_parameters, X_rct=X, T_rct=T
+        data_parameters, X_rct=X, T_rct=T, include_intercept=include_intercept
     )
 
 
 def generate_data_from_real_varying_sample_size(
-    X: pd.DataFrame, T: np.ndarray, data_parameters: dict[str, Any]
+    X: pd.DataFrame,
+    T: np.ndarray,
+    data_parameters: dict[str, Any],
+    include_intercept: bool = True,
 ) -> dict[int, dict]:
     # same as `generate_synthetic_data_varying_sample_size` but with
     # "real" data, passed as X and T, whilst generate_synthetic_data_varying_sample_size
     # would sample those
     return generate_synthetic_data_varying_sample_size(
-        data_parameters, X_rct=X, T_rct=T
+        data_parameters, X_rct=X, T_rct=T, include_intercept=include_intercept
     )
 
 
@@ -371,7 +402,7 @@ def _main():
     causal_param_first_index = 4
     outcome_function = (
         # y = 1 + 1*X_0 - 1*X_1 + 1*X_2 + 4*T + 2*X_0*T + 2*X_1*T + 0*X_2*T + eps
-        lambda X, T, eps: 1  # intercept, non-causal
+        lambda X, T, eps: 0  # intercept, non-causal; 0 => no intercept
         + 1 * X["X_0"]  # non-causal
         - 1 * X["X_1"]  # non-causal
         + 1 * X["X_2"]  # non-causal
@@ -381,7 +412,7 @@ def _main():
         + 0 * X["X_2"] * T  # causal
         + eps
     )
-    true_params = np.array([1, 1, -1, 1, 4, 2, 2, 0])  # copied from above
+    true_params = np.array([1, -1, 1, 4, 2, 2, 0])  # copied from above
     std_true_y = 1  # Standard deviation for the true Y
 
     X0 = np.random.beta(12, 3, size=n_rct_before_split)
@@ -412,7 +443,9 @@ def _main():
         "std_true_y": std_true_y,
         "causal_param_first_index": causal_param_first_index,
     }
-    data = generate_exact_synthetic_data_varying_sample_size(data_parameters)
+    data = generate_exact_synthetic_data_varying_sample_size(
+        data_parameters, include_intercept=False
+    )
     return data, data_parameters
 
 
