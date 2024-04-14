@@ -9,7 +9,7 @@ import sys
 
 def generate_rct(
     x_sampled_covariates: dict[str, np.ndarray]
-) -> tuple[pd.DataFrame, np.ndarray]:
+) -> pd.DataFrame:  # tuple[pd.DataFrame, np.ndarray]:
     """
     Generate a randomised controlled trial (RCT) dataset.
 
@@ -17,13 +17,12 @@ def generate_rct(
         x_sampled_covariates: dictionary of covariates with keys as column names
 
     Returns:
-        tuple[pd.DataFrame, np.ndarray]: X, T where X is the covariates and T is the
-            sampled binary treatment assignment
+        pd.DataFrame: dataframe containing covariates and a column "T" corresponding to
+            treatment assignment
     """
     X = pd.DataFrame.from_dict(x_sampled_covariates)
-    n_global = X.shape[0]
-    T = np.random.randint(0, 2, size=n_global)  # Generate T
-    return X, T
+    X["T"] = np.random.randint(0, 2, size=X.shape[0])  # Generate T
+    return X
 
 
 def generate_design_matrix(
@@ -99,8 +98,7 @@ def sigmoid(x: np.ndarray) -> np.ndarray:
 
 # Function to generate host and mirror data
 def generate_host_and_mirror(
-    X: pd.DataFrame,
-    T: np.ndarray,  # combine X and T in generate_rct?
+    XandT: pd.DataFrame,
     f_assigned_to_host: Callable,  # ??
     n_host: int,
     n_mirror: int,
@@ -128,10 +126,9 @@ def generate_host_and_mirror(
         tuple[pd.DataFrame, pd.DataFrame]: host and mirror datasets
     """
 
-    if n_host + n_mirror > X.shape[0]:
+    if n_host + n_mirror > XandT.shape[0]:
         raise ValueError("n_host + n_mirror > n_rct")
 
-    XandT = pd.concat([X, pd.DataFrame(T, columns=["T"])], axis=1)
     # Initialize dataframes for the host and mirror
     data_host = pd.DataFrame(index=range(n_host), columns=XandT.columns, dtype=float)
     data_mirror = pd.DataFrame(
@@ -176,8 +173,7 @@ def generate_host_and_mirror(
 
 # Function to generate host2 data
 def generate_cand2(
-    X: pd.DataFrame,
-    T: np.ndarray,
+    XandT: pd.DataFrame,
     f_assigned_to_cand2: Callable,
     n_cand2: int,
     power_x: int,
@@ -185,10 +181,9 @@ def generate_cand2(
     outcome_function: Callable,
     std_true_y: float,
 ) -> pd.DataFrame:
-    if n_cand2 > X.shape[0]:
+    if n_cand2 > XandT.shape[0]:
         raise ValueError("n_cand2 > n_global")
 
-    XandT = pd.concat([X, pd.DataFrame(T, columns=["T"])], axis=1)
     data_cand2 = pd.DataFrame(index=range(n_cand2), columns=XandT.columns, dtype=float)
     count_cand2 = 0
     for _, x_and_t in XandT.iterrows():
@@ -229,16 +224,15 @@ def generate_synthetic_data_varying_sample_size(
     for length in data_parameters["n_both_candidates_list"]:
         # should the generation be outside of the loop actually?
         if X_rct is None and T_rct is None:
-            X_rct, T_rct = generate_rct(x_distributions)
-            pre_X_cand2, pre_T_cand2 = generate_rct(x_distributions)
+            XandT = generate_rct(x_distributions)
+            pre_XandT_cand2 = generate_rct(x_distributions)
         else:
             assert X_rct is not None and T_rct is not None, "Need both X_rct and T_rct"
-            pre_X_cand2 = X_rct
-            pre_T_cand2 = T_rct
+            XandT = pd.concat([X_rct, pd.DataFrame(T_rct, columns=["T"])], axis=1)
+            pre_XandT_cand2 = XandT.copy()  # same as XandT
 
         design_data_host, design_data_mirror = generate_host_and_mirror(
-            X=X_rct,
-            T=T_rct,
+            XandT=XandT,
             f_assigned_to_host=p_assigned_to_cand2,  # host?
             n_host=data_parameters["n_host"],
             n_mirror=length,
@@ -249,14 +243,13 @@ def generate_synthetic_data_varying_sample_size(
         )
 
         design_data_cand2 = generate_cand2(
-            pre_X_cand2,
-            pre_T_cand2,
-            p_assigned_to_cand2,
-            data_parameters["proportion"] * length,
-            power_x,
-            power_x_t,
-            outcome_function,
-            std_true_y,
+            XandT=pre_XandT_cand2,
+            f_assigned_to_cand2=p_assigned_to_cand2,
+            n_cand2=data_parameters["proportion"] * length,
+            power_x=power_x,
+            power_x_t=power_x_t,
+            outcome_function=outcome_function,
+            std_true_y=std_true_y,
         )
 
         data[length] = {
@@ -282,29 +275,30 @@ def generate_exact_synthetic_data_varying_sample_size(
     data = {}
 
     for length in data_parameters["n_both_candidates_list"]:
+        # should the generation be outside of the loop actually?
         if X_rct is None and T_rct is None:
-            X_rct, T_rct = generate_rct(data_parameters["x_distributions"])
+            XandT = generate_rct(data_parameters["x_distributions"])
         else:
             assert X_rct is not None and T_rct is not None, "Need both X_rct and T_rct"
+            XandT = pd.concat([X_rct, pd.DataFrame(T_rct, columns=["T"])], axis=1)
 
         design_data_host, _ = generate_host_and_mirror(
-            X_rct,
-            T_rct,
-            data_parameters["p_assigned_to_cand2"],
-            n_host,
-            length,
-            power_x,
-            power_x_t,
-            outcome_function,
-            std_true_y,
+            XandT=XandT,
+            f_assigned_to_host=data_parameters["p_assigned_to_cand2"],
+            n_host=n_host,
+            n_mirror=length,
+            power_x=power_x,
+            power_x_t=power_x_t,
+            outcome_function=outcome_function,
+            std_true_y=std_true_y,
         )  # mirror isn't used.
         # get the covariates only (no intercept)
-        X_host = design_data_host[X_rct.columns]
+        X_host = design_data_host[XandT.columns]
         assert n_host == len(X_host), "Shape mismatch"
 
         # create the exact complementary treatment:
         data_complementary = X_host.copy()
-        data_complementary["T"] = 1.0 - design_data_host["T"]
+        data_complementary["T"] = 1.0 - design_data_host["T"]  # overwrite T with 1 - T
         design_data_exact_complementary = generate_design_matrix(
             data_complementary, power_x, power_x_t
         )
@@ -317,7 +311,7 @@ def generate_exact_synthetic_data_varying_sample_size(
 
         # exact_twin_untreated: Same covariates but no treatment
         data_exact_twin_untreated = X_host.copy()
-        data_exact_twin_untreated["T"] = 0.0
+        data_exact_twin_untreated["T"] = 0.0  # overwrite T with all 0s
         design_data_exact_twin_untreated = generate_design_matrix(
             data_exact_twin_untreated, power_x, power_x_t
         )
@@ -327,7 +321,7 @@ def generate_exact_synthetic_data_varying_sample_size(
 
         # exact_twin_treated:  Same covariates but all treatment
         data_exact_twin_treated = X_host.copy()
-        data_exact_twin_treated["T"] = 1.0
+        data_exact_twin_treated["T"] = 1.0  # overwrite T with all 1s
         design_data_exact_twin_treated = generate_design_matrix(
             data_exact_twin_treated, power_x, power_x_t
         )
