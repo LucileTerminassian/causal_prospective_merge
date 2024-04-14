@@ -1,10 +1,6 @@
 from typing import Any, Callable
 import numpy as np
 import pandas as pd
-import scipy.stats as stats
-import matplotlib.pyplot as plt
-from scipy.stats import entropy, gaussian_kde
-import sys
 
 
 def generate_rct(
@@ -171,7 +167,7 @@ def generate_host_and_mirror(
     return design_data_host, design_data_mirror
 
 
-# Function to generate host2 data
+# Function to generate the second candidate dataset
 def generate_cand2(
     XandT: pd.DataFrame,
     f_assigned_to_cand2: Callable,
