@@ -3,9 +3,7 @@ import numpy as np
 import pandas as pd
 
 
-def generate_rct(
-    x_sampled_covariates: dict[str, np.ndarray]
-) -> pd.DataFrame:  # tuple[pd.DataFrame, np.ndarray]:
+def generate_rct(x_sampled_covariates: dict[str, np.ndarray]) -> pd.DataFrame:
     """
     Generate a randomised controlled trial (RCT) dataset.
 
@@ -39,7 +37,6 @@ def generate_design_matrix(
         pd.DataFrame: design matrix with a total of
             1 + d * power_x + 1 + d * power_x_t columns (i.e. includes intercept)
     """
-    # Extract X and T from the dataframe
     X = data.drop(columns=["T"])
     T = data["T"]
     n, d = np.shape(X)
@@ -87,12 +84,11 @@ def append_outcome(
     return data
 
 
-# Probability functions
 def sigmoid(x: np.ndarray) -> np.ndarray:
-    return 1 / (1 + np.exp(-x))
+    # helper
+    return 1.0 / (1.0 + np.exp(-x))
 
 
-# Function to generate host and mirror data
 def generate_host_and_mirror(
     XandT: pd.DataFrame,
     f_assigned_to_host: Callable,  # ??
@@ -132,7 +128,6 @@ def generate_host_and_mirror(
     )
 
     count_mirror, count_host = 0, 0
-    # iterate over rows of X and T
     for _, x_and_t in XandT.iterrows():
         proba_assigned_to_host = f_assigned_to_host(
             x_and_t.drop("T"), x_and_t["T"], np.random.normal()
