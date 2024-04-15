@@ -140,7 +140,9 @@ def subsample_one_dataset(
         return
 
     for i in range(n_global):
-        proba_assigned = assignment_function(X.iloc[i, :], T[i], np.random.normal())
+        proba_assigned = assignment_function(X.iloc[i, :].values, T[i], np.random.normal())
+        proba_assigned = 0 if pd.isna(proba_assigned) else max(0, min(proba_assigned, 1))
+
         selected = np.random.binomial(1, proba_assigned)
         if selected == 1:
             first_value = next(iter(data.values()))
@@ -155,9 +157,9 @@ def subsample_one_dataset(
 
     if len(data) != sample_size:
         print(
-            "len(data_cand2) n="
+            "Sample size of subsampled dataset is"
             + str(len(data))
-            + " != n_complementary ("
+            + " which is not equal to the wanted sample size of "
             + str(sample_size)
             + ")"
         )
