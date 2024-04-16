@@ -361,6 +361,7 @@ class BayesianCausalForest:
         posterior_predictive_entropy = self.samples_obs_EIG(
             X, T, n_samples_outer_expectation, n_samples_inner_expectation
         ) + n_e / 2 * (1 + np.log(2 * np.pi * self.sigma_0_sq))
+
         predictions, tau_pred = self.posterior_sample_predictions(
             X=X, T=T, n_samples=n_samples_outer_expectation, return_tau=True
         )
@@ -374,8 +375,8 @@ class BayesianCausalForest:
             conditional_predictions = self.posterior_conditional_predictions(
                 X=X, T=T, Y_residuals=Y_resid, n_samples=n_samples_inner_expectation
             )
-            conditional_predictions = conditional_predictions + tau_pred[i]
-            causal_sample.append((predictions[i], conditional_predictions))
+            conditional_predictions = conditional_predictions 
+            causal_sample.append((predictions[i]-tau_pred[i], conditional_predictions))
         return posterior_predictive_entropy - calc_posterior_predictive_entropy(
             causal_sample, self.sigma_0_sq ** (1 / 2)
         )
