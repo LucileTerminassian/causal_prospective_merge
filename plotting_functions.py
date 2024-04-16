@@ -91,17 +91,15 @@ def plot_non_diff_array(
 
 
 def plot_array(
-    dict_additional_plots,
     x,
     arr,
     axis_names,
-    names,
-    text=False,
-    title=False,
-    save=False,
+    dict_additional_plots: dict | None = None,
+    text: str | None = None,
+    title: str | None = None,
+    save: str | None = None,
 ):
 
-    n_lines, n_xaxis = np.shape(arr)[0], np.shape(arr)[1]
     plt.figure(figsize=(10, 6))
     mean_data = np.mean(arr, axis=0)
     std_data = np.std(arr, axis=0)
@@ -110,25 +108,17 @@ def plot_array(
     plt.fill_between(
         x, mean_data - std_data, mean_data + std_data, color="blue", alpha=0.3
     )
+    if dict_additional_plots is not None:
+        for key, value in dict_additional_plots.items():
+            plt.plot(x, value, label=key)
 
-    if dict_additional_plots["complementary"]:
-        complementary = np.array(dict_additional_plots["complementary"])
-        twin = np.array(dict_additional_plots["twin"])
-        plt.plot(x, complementary - twin, label="Exact complementary - twin")
-    if dict_additional_plots["twin_treated"]:
-        twin_treated = dict_additional_plots["twin_treated"]
-        plt.plot(x, twin_treated, label="Exact twin treated")
-    if dict_additional_plots["twin_untreated"]:
-        twin_untreated = dict_additional_plots["twin_untreated"]
-        plt.plot(x, twin_untreated, label="Exact twin untreated")
-
-    if title:
+    if title is not None:
         plt.title(title)
     plt.ylabel(axis_names[1])
     plt.xlabel(axis_names[0])
     plt.legend()
 
-    if text:
+    if text is not None:
         plt.text(
             0.5, -0.2, text, ha="center", va="center", transform=plt.gca().transAxes
         )

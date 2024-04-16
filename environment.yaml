@@ -1,0 +1,20 @@
+name: causalinfo
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - pytorch
+  - numpy
+  - pandas
+  - matplotlib
+  - seaborn
+  - scipy
+  - scikit-learn
+  - jupyter
+  - black
+  - pip
+  - pip:
+    - pyro-ppl
+    - xbcausalforest
+    - xbart
