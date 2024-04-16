@@ -54,6 +54,7 @@ def linear_eig_closed_form_varying_sample_size(
 ## noisy
 
 
+# What's the difference with the above?
 def linear_eig_from_samples_varying_sample_size(
     data, data_parameters, prior_hyperparameters, sampling_parameters
 ):
