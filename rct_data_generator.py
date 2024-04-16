@@ -31,7 +31,9 @@ def get_data(dataset: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Se
             y.loc[idx] = data["y1"].loc[idx]
         y = y.rename("y")
         one_hot = OneHotEncoder(drop="first").fit(x[["x_2", "x_21", "x_24"]])
-        new_data = pd.DataFrame(one_hot.transform(x[["x_2", "x_21", "x_24"]]).toarray())
+        new_data = pd.DataFrame(
+            one_hot.transform(x[["x_2", "x_21", "x_24"]]).toarray(),  # type: ignore
+        )
         x = x.drop(columns=["x_2", "x_21", "x_24"])
         x = pd.concat([x, new_data], axis=1)
     else:
