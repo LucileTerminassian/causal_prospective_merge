@@ -6,6 +6,30 @@ from scipy.stats import entropy, gaussian_kde
 import sys
 
 
+def get_data(dataset):
+
+    if dataset == 'twins':
+        data = pd.read_csv('data/twins_ztwins_sample0.csv')
+        x = data.drop(columns=['y0', 'y1', 'ite', 'y', 't'])
+        t = data['t']
+        y = data['y']
+
+    elif dataset == 'acic':
+        data = pd.read_csv('./acic_zymu_174570858.csv')
+        x = pd.read_csv('./data/acic_x.csv')
+        t = data['z']
+        y = data['y0']
+        idx_to_change = data.loc[data['z'] == 1].index.to_list()
+        for idx in idx_to_change:
+            y.loc[idx] = data['y1'].loc[idx]
+        y = y.rename('y')
+        one_hot = OneHotEncoder(drop='first').fit(x[['x_2', 'x_21', 'x_24']])
+        new_data = pd.DataFrame(one_hot.transform(x[['x_2', 'x_21', 'x_24']]).toarray())
+        x = x.drop(columns=['x_2', 'x_21', 'x_24'])
+        x = pd.concat([x, new_data], axis=1)
+
+    return data, x, t, y
+
 def generate_rct(x_distributions: dict[str, np.ndarray], seed=0):
     np.random.seed(seed)
     X = pd.DataFrame.from_dict(x_distributions)
