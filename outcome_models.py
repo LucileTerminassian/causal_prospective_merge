@@ -99,7 +99,7 @@ class BayesianLinearRegression:
     def posterior_sample(self, n_samples):
         """ "Returns n samples from the posterior"""
         mvn = multivariate_normal(mean=self.beta, cov=self.cov)
-        samples = mvn.rvs(n_samples)
+        samples = mvn.rvs(n_samples, random_state=0)
         if type(self.inv_cov) == torch.Tensor:
             samples = torch.tensor(samples, dtype=torch.float64)
         return samples
@@ -137,7 +137,9 @@ class BayesianLinearRegression:
 
                 mvn = multivariate_normal(mean=conditional_mean, cov=conditional_cov)
 
-                return torch.tensor(mvn.rvs(n_samples), dtype=torch.float64)
+                return torch.tensor(
+                    mvn.rvs(n_samples, random_state=0), dtype=torch.float64
+                )
             else:
                 if condition_after:
                     conditional_mean = self.beta[:conditioning_index] + sigma_c @ (
@@ -152,7 +154,7 @@ class BayesianLinearRegression:
 
                 mvn = multivariate_normal(mean=conditional_mean, cov=conditional_cov)
 
-                return mvn.rvs(n_samples)
+                return mvn.rvs(n_samples, random_state=0)
 
         return conditional_sampling_func
 
@@ -363,8 +365,10 @@ class BayesianCausalForest:
             conditional_predictions = self.posterior_conditional_predictions(
                 X=X, T=T, Y_residuals=Y_resid, n_samples=n_samples_inner_expectation
             )
-            conditional_predictions = conditional_predictions + tau_pred[i]
-            causal_sample.append((predictions[i], conditional_predictions))
+            conditional_predictions = conditional_predictions
+            causal_sample.append(
+                (predictions[i] - tau_pred[i], conditional_predictions)
+            )
         return posterior_predictive_entropy - calc_posterior_predictive_entropy(
             causal_sample, self.sigma_0_sq ** (1 / 2)
         )

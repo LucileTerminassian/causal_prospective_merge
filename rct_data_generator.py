@@ -1,9 +1,48 @@
 from typing import Any, Callable
 import numpy as np
 import pandas as pd
+from sklearn.preprocessing import OneHotEncoder
 
 
-def generate_rct(x_sampled_covariates: dict[str, np.ndarray]) -> pd.DataFrame:
+def get_data(dataset: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+    """
+    Get the data for the specified dataset.
+
+    Args:
+        dataset: name of the dataset load.
+            Currently, the options are 'twins' and 'acic'.
+
+    Returns:
+        tuple[pd.DataFrame, pd.DataFrame, np.ndarray, np.ndarray]: data, covariates, treatment assignment, and outcomes
+    """
+    if dataset == "twins":
+        data = pd.read_csv("data/twins_ztwins_sample0.csv")
+        x = data.drop(columns=["y0", "y1", "ite", "y", "t"])
+        t = data["t"]
+        y = data["y"]
+
+    elif dataset == "acic":
+        data = pd.read_csv("./acic_zymu_174570858.csv")
+        x = pd.read_csv("./data/acic_x.csv")
+        t = data["z"]
+        y = data["y0"]
+        idx_to_change = data.loc[data["z"] == 1].index.to_list()
+        for idx in idx_to_change:
+            y.loc[idx] = data["y1"].loc[idx]
+        y = y.rename("y")
+        one_hot = OneHotEncoder(drop="first").fit(x[["x_2", "x_21", "x_24"]])
+        new_data = pd.DataFrame(one_hot.transform(x[["x_2", "x_21", "x_24"]]).toarray())
+        x = x.drop(columns=["x_2", "x_21", "x_24"])
+        x = pd.concat([x, new_data], axis=1)
+    else:
+        raise ValueError(f"Dataset {dataset} not recognized")
+
+    return data, x, t, y
+
+
+def generate_rct(
+    x_sampled_covariates: dict[str, np.ndarray], seed: int | None = 0
+) -> pd.DataFrame:
     """
     Generate a randomised controlled trial (RCT) dataset.
 
@@ -14,6 +53,8 @@ def generate_rct(x_sampled_covariates: dict[str, np.ndarray]) -> pd.DataFrame:
         pd.DataFrame: dataframe containing covariates and a column "T" corresponding to
             treatment assignment
     """
+    if seed is not None:
+        np.random.seed(seed)
     X = pd.DataFrame.from_dict(x_sampled_covariates)
     X["T"] = np.random.randint(0, 2, size=X.shape[0])  # Generate T
     return X
@@ -101,46 +142,51 @@ def sigmoid(x: np.ndarray) -> np.ndarray:
     return 1.0 / (1.0 + np.exp(-x))
 
 
-def generate_host_and_mirror(
+def subsample_two_complementary_datasets(
     XandT: pd.DataFrame,
     f_assigned_to_host: Callable,  # ??
     n_host: int,
-    n_mirror: int,
+    n_complementary: int,
     power_x: int,
     power_x_t: int,
     outcome_function: Callable,
     std_true_y: float,
     include_intercept: bool = True,
+    seed: int | None = 0,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Generate host and mirror data for a synthetic RCT.
+    Generate host and its complementary data for a synthetic RCT.
 
     Args:
-        X: covariates in a dataframe
-        T: treatment assignment
-        n_mirror: number of samples for the "mirror" set (best we can get)
+        XandT: dataframe containing covariates and a column "T" corresponding to
+            treatment assignment
+        n_complementary: number of samples for the "complementary" set (best we can get)
         power_x: power of the covariates
         power_x_t: power of the covariates times treatment
         outcome_function: function to generate the outcome
         std_true_y: standard deviation of the true outcome
+        include_intercept: whether to include an intercept in the design matrix
+        seed: random seed
 
     Raises:
-        ValueError: if n_host + n_mirror > X.shape[0]
+        ValueError: if n_host + n_complementary > X.shape[0]
 
     Returns:
-        tuple[pd.DataFrame, pd.DataFrame]: host and mirror datasets
+        tuple[pd.DataFrame, pd.DataFrame]: host and complementary datasets
     """
 
-    if n_host + n_mirror > XandT.shape[0]:
-        raise ValueError("n_host + n_mirror > n_rct")
+    if n_host + n_complementary > XandT.shape[0]:
+        raise ValueError("n_host + n_complementary > n_rct")
+    if seed is not None:
+        np.random.seed(seed)
 
-    # Initialize dataframes for the host and mirror
+    # Initialize dataframes for the host and its complementary
     data_host = pd.DataFrame(index=range(n_host), columns=XandT.columns, dtype=float)
-    data_mirror = pd.DataFrame(
-        index=range(n_mirror), columns=XandT.columns, dtype=float
+    data_complementary = pd.DataFrame(
+        index=range(n_complementary), columns=XandT.columns, dtype=float
     )
 
-    count_mirror, count_host = 0, 0
+    count_complementary, count_host = 0, 0
     for _, x_and_t in XandT.iterrows():
         proba_assigned_to_host = f_assigned_to_host(
             x_and_t.drop("T"), x_and_t["T"], np.random.normal()
@@ -150,82 +196,83 @@ def generate_host_and_mirror(
         if is_assigned_to_host and count_host < n_host:
             data_host.loc[count_host] = x_and_t
             count_host += 1
-        elif not is_assigned_to_host and count_mirror < n_mirror:
-            data_mirror.loc[count_mirror] = x_and_t
-            count_mirror += 1
+        elif not is_assigned_to_host and count_complementary < n_complementary:
+            data_complementary.loc[count_complementary] = x_and_t
+            count_complementary += 1
 
-        if count_mirror == n_mirror and count_host == n_host:
+        if count_complementary == n_complementary and count_host == n_host:
             break
 
     assert (
         len(data_host) == n_host
     ), f"Expected len(data_host) to be {n_host}, got {len(data_host)}"
     assert (
-        len(data_mirror) == n_mirror
-    ), f"Expected len(data_mirror) to be {n_mirror}, got {len(data_mirror)}"
+        len(data_complementary) == n_complementary
+    ), f"Expected len(n_complementary)={n_complementary}, got {len(data_complementary)}"
 
     design_data_host = generate_design_matrix(
         data_host, power_x, power_x_t, include_intercept
     )
-    design_data_mirror = generate_design_matrix(
-        data_mirror, power_x, power_x_t, include_intercept
+    design_data_complementary = generate_design_matrix(
+        data_complementary, power_x, power_x_t, include_intercept
     )
 
     design_data_host = append_outcome(design_data_host, outcome_function, std_true_y)
-    design_data_mirror = append_outcome(
-        design_data_mirror, outcome_function, std_true_y
+    design_data_complementary = append_outcome(
+        design_data_complementary, outcome_function, std_true_y
     )
 
-    return design_data_host, design_data_mirror
+    return design_data_host, design_data_complementary
 
 
 # Function to generate the second candidate dataset
-def generate_cand2(
+def subsample_one_dataset(
     XandT: pd.DataFrame,
-    f_assigned_to_cand2: Callable,
-    n_cand2: int,
+    assignment_function: Callable,
+    sample_size: int,
     power_x: int,
     power_x_t: int,
     outcome_function: Callable,
     std_true_y: float,
     include_intercept: bool = True,
+    seed: int | None = 0,
 ) -> pd.DataFrame:
-    if n_cand2 > XandT.shape[0]:
-        raise ValueError("n_cand2 > n_global")
+    if sample_size > XandT.shape[0]:
+        raise ValueError("sample_size > n_global")
+    if seed is not None:
+        np.random.seed(seed)
 
-    data_cand2 = pd.DataFrame(index=range(n_cand2), columns=XandT.columns, dtype=float)
+    data = pd.DataFrame(index=range(sample_size), columns=XandT.columns, dtype=float)
     count_cand2 = 0
     for _, x_and_t in XandT.iterrows():
-        proba_assigned_to_cand2 = f_assigned_to_cand2(
+        proba_assigned_to_cand2 = assignment_function(
             x_and_t.drop("T"), x_and_t["T"], np.random.normal()
         )
         is_assigned_to_cand2 = np.random.binomial(1, proba_assigned_to_cand2)
-        if is_assigned_to_cand2 and count_cand2 < n_cand2:
-            data_cand2.loc[count_cand2] = x_and_t
+        if is_assigned_to_cand2 and count_cand2 < sample_size:
+            data.loc[count_cand2] = x_and_t
             count_cand2 += 1
 
-        if count_cand2 == n_cand2:
+        if count_cand2 == sample_size:
             break
 
     assert (
-        len(data_cand2) == n_cand2
-    ), f"Expected len(data_cand2) to be {n_cand2}, got {len(data_cand2)}"
-    design_cand2 = generate_design_matrix(
-        data_cand2, power_x, power_x_t, include_intercept
-    )
-    design_cand2 = append_outcome(design_cand2, outcome_function, std_true_y)
-
-    return design_cand2
+        len(data) == sample_size
+    ), f"Expected len(data)={sample_size}, got {len(data)}"
+    design_data = generate_design_matrix(data, power_x, power_x_t, include_intercept)
+    design_data = append_outcome(design_data, outcome_function, std_true_y)
+    return design_data
 
 
-def generate_synthetic_data_varying_sample_size(
+def generate_data_varying_sample_size(
     data_parameters: dict[str, Any],
     X_rct: pd.DataFrame | None = None,
     T_rct: np.ndarray | None = None,
     include_intercept: bool = True,
 ) -> dict[int, dict]:
-    x_distributions = data_parameters["x_distributions"]
-    p_assigned_to_cand2 = data_parameters["p_assigned_to_cand2"]
+    # if X_rct and T_rct are None, generate them; if not, use them
+    # need "x_distributions" to bein the data_parameters if X_rct and T_rct are None
+    x_distributions = data_parameters.get("x_distributions", None)
     power_x = data_parameters["power_x"]
     power_x_t = data_parameters["power_x_t"]
     outcome_function = data_parameters["outcome_function"]
@@ -233,49 +280,55 @@ def generate_synthetic_data_varying_sample_size(
 
     data = {}
 
-    for length in data_parameters["n_both_candidates_list"]:
+    for seed, length in enumerate(data_parameters["n_both_candidates_list"]):
         # should the generation be outside of the loop actually?
         if X_rct is None and T_rct is None:
-            XandT = generate_rct(x_distributions)
-            pre_XandT_cand2 = generate_rct(x_distributions)
+            assert (
+                x_distributions is not None
+            ), "Need x_distributions if X_rct and T_rct are None"
+            XandT = generate_rct(x_distributions, seed=seed)
+            # TODO: check if should be the same or different
+            # pre_XandT_cand2 = generate_rct(x_distributions, seed=seed)
         else:
             assert X_rct is not None and T_rct is not None, "Need both X_rct and T_rct"
             XandT = pd.concat([X_rct, pd.DataFrame(T_rct, columns=["T"])], axis=1)
             pre_XandT_cand2 = XandT.copy()  # same as XandT
 
-        design_data_host, design_data_mirror = generate_host_and_mirror(
+        design_data_host, design_data_comp = subsample_two_complementary_datasets(
             XandT=XandT,
-            f_assigned_to_host=p_assigned_to_cand2,  # host?
+            f_assigned_to_host=data_parameters["p_assigned_to_host"],  # host?
             n_host=data_parameters["n_host"],
-            n_mirror=length,
+            n_complementary=length,
             power_x=power_x,
             power_x_t=power_x_t,
             outcome_function=outcome_function,
             std_true_y=std_true_y,
             include_intercept=include_intercept,
+            seed=seed,
         )
 
-        design_data_cand2 = generate_cand2(
+        design_data_cand2 = subsample_one_dataset(
             XandT=pre_XandT_cand2,
-            f_assigned_to_cand2=p_assigned_to_cand2,
-            n_cand2=data_parameters["proportion"] * length,
+            assignment_function=data_parameters["p_assigned_to_cand2"],
+            sample_size=data_parameters["proportion"] * length,
             power_x=power_x,
             power_x_t=power_x_t,
             outcome_function=outcome_function,
             std_true_y=std_true_y,
             include_intercept=include_intercept,
+            seed=seed,
         )
 
         data[length] = {
             "host": design_data_host,
-            "mirror": design_data_mirror,
+            "complementary": design_data_comp,
             "cand2": design_data_cand2,
         }
 
     return data
 
 
-def generate_exact_synthetic_data_varying_sample_size(
+def generate_exact_data_varying_sample_size(
     data_parameters: dict[str, Any],
     X_rct: pd.DataFrame | None = None,
     T_rct: np.ndarray | None = None,
@@ -289,25 +342,27 @@ def generate_exact_synthetic_data_varying_sample_size(
 
     data = {}
 
-    for length in data_parameters["n_both_candidates_list"]:
+    for seed, length in enumerate(data_parameters["n_both_candidates_list"]):
         # should the generation be outside of the loop actually?
         if X_rct is None and T_rct is None:
-            XandT = generate_rct(data_parameters["x_distributions"])
+            XandT = generate_rct(data_parameters["x_distributions"], seed=seed)
         else:
             assert X_rct is not None and T_rct is not None, "Need both X_rct and T_rct"
             XandT = pd.concat([X_rct, pd.DataFrame(T_rct, columns=["T"])], axis=1)
 
-        design_data_host, _ = generate_host_and_mirror(
+        design_data_host, _ = subsample_two_complementary_datasets(
             XandT=XandT,
-            f_assigned_to_host=data_parameters["p_assigned_to_cand2"],
+            f_assigned_to_host=data_parameters["p_assigned_to_host"],
             n_host=n_host,
-            n_mirror=length,
+            n_complementary=length,
             power_x=power_x,
             power_x_t=power_x_t,
             outcome_function=outcome_function,
             std_true_y=std_true_y,
             include_intercept=include_intercept,
-        )  # mirror isn't used.
+            seed=seed,
+        )  # complementary data isn't used.
+
         # get the covariates only (no intercept)
         X_host = design_data_host[XandT.columns]
         assert n_host == len(X_host), "Shape mismatch"
@@ -360,39 +415,10 @@ def generate_exact_synthetic_data_varying_sample_size(
     return data
 
 
-def generate_exact_real_data_varying_sample_size(
-    X: pd.DataFrame,
-    T: np.ndarray,
-    data_parameters: dict[str, Any],
-    include_intercept: bool = True,
-) -> dict[int, dict]:
-    # same as generate_exact_synthetic_data_varying_sample_size but with
-    # "real" data, passed as X and T, whilst
-    # generate_exact_synthetic_data_varying_sample_size would sample those
-    return generate_exact_synthetic_data_varying_sample_size(
-        data_parameters, X_rct=X, T_rct=T, include_intercept=include_intercept
-    )
-
-
-def generate_data_from_real_varying_sample_size(
-    X: pd.DataFrame,
-    T: np.ndarray,
-    data_parameters: dict[str, Any],
-    include_intercept: bool = True,
-) -> dict[int, dict]:
-    # same as `generate_synthetic_data_varying_sample_size` but with
-    # "real" data, passed as X and T, whilst generate_synthetic_data_varying_sample_size
-    # would sample those
-    return generate_synthetic_data_varying_sample_size(
-        data_parameters, X_rct=X, T_rct=T, include_intercept=include_intercept
-    )
-
-
 def _main():
     n_both_candidates_list = [200]  # , 500, 1000
     proportion = 1  # n_cand2 = prorportion * n_both_candidates_list
     std_true_y = 1
-    # set seed
     np.random.seed(42)
 
     n_rct_before_split = 10**5
@@ -436,6 +462,7 @@ def _main():
         "n_rct_before_split": n_rct_before_split,
         "x_distributions": x_distributions,
         "p_assigned_to_cand2": p_assigned_to_cand2,
+        "p_assigned_to_host": p_assigned_to_host,
         "n_host": n_host,
         "power_x": power_x,
         "power_x_t": power_x_t,
@@ -443,7 +470,7 @@ def _main():
         "std_true_y": std_true_y,
         "causal_param_first_index": causal_param_first_index,
     }
-    data = generate_exact_synthetic_data_varying_sample_size(
+    data = generate_exact_data_varying_sample_size(
         data_parameters, include_intercept=False
     )
     return data, data_parameters
