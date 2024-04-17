@@ -388,9 +388,11 @@ class BayesianCausalForest:
             n_samples_inner_expectation_obs + 1
         )
         print("Sampling from Posterior")
+
         predicitions_obs, tau_pred = self.posterior_sample_predictions(
             X=X, T=T, n_samples=n_samples, return_tau=True
         )
+
         predictions_in_form = predictions_in_EIG_obs_form(
             predicitions_obs,
             n_samples_outer_expectation_obs,

@@ -19,10 +19,11 @@ def linear_eig_closed_form_varying_sample_size(
 ):
     # this now works with both exact and "non-exact" `data`
     sample_sizes = data_parameters["n_both_candidates_list"]
-    condidates_names = data[sample_sizes[0]].keys() - ["host"]
+    candidates_names = data[sample_sizes[0]].keys() - ["host"]
+    
     # dict of the form {candidate_name: {sample_size: EIG}}
-    EIG_obs = {name: [] for name in condidates_names}
-    EIG_caus = {name: [] for name in condidates_names}
+    EIG_obs = {name: [] for name in candidates_names}
+    EIG_caus = {name: [] for name in candidates_names}
 
     for length in sample_sizes:
         dlen = data[length]  # for convenience
@@ -52,7 +53,7 @@ def linear_eig_closed_form_varying_sample_size(
 
 #################################### FROM SAMPLES
 
-def linear_eig_closed_form_varying_sample_size(
+def linear_eig_from_samples_varying_sample_size(
     data: dict[int, dict],
     data_parameters: dict[str, Any],
     prior_hyperparameters: dict[str, Any],
@@ -62,15 +63,15 @@ def linear_eig_closed_form_varying_sample_size(
     sample_sizes = data_parameters["n_both_candidates_list"]
     candidates_names = data[sample_sizes[0]].keys() - ["host"]
     (
-        n_samples_outer_expectation,
-        n_samples_inner_expectation,
-        n_causal_inner_exp,
-        n_causal_outer_exp,
+        n_samples_outer_expectation_obs,
+        n_samples_inner_expectation_obs,
+        n_samples_inner_expectation_caus,
+        n_samples_outer_expectation_caus,
     ) = (
-        sampling_parameters["n_samples_outer_expectation"],
-        sampling_parameters["n_samples_inner_expectation"],
-        sampling_parameters["n_causal_inner_exp"],
-        sampling_parameters["n_causal_outer_exp"],
+        sampling_parameters["n_samples_outer_expectation_obs"],
+        sampling_parameters["n_samples_inner_expectation_obs"],
+        sampling_parameters["n_samples_inner_expectation_caus"],
+        sampling_parameters["n_samples_outer_expectation_caus"],
     )
 
     # dict of the form {candidate_name: {sample_size: EIG}}
@@ -120,15 +121,15 @@ def bart_eig_from_samples_varying_sample_size(
     candidates_names = data[sample_sizes[0]].keys() - ["host"]
 
     (
-        n_samples_outer_expectation,
-        n_samples_inner_expectation,
-        n_causal_inner_exp,
-        n_causal_outer_exp,
+        n_samples_outer_expectation_obs,
+        n_samples_inner_expectation_obs,
+        n_samples_inner_expectation_caus,
+        n_samples_outer_expectation_caus,
     ) = (
-        sampling_parameters["n_samples_outer_expectation"],
-        sampling_parameters["n_samples_inner_expectation"],
-        sampling_parameters["n_causal_inner_exp"],
-        sampling_parameters["n_causal_outer_exp"],
+        sampling_parameters["n_samples_outer_expectation_obs"],
+        sampling_parameters["n_samples_inner_expectation_obs"],
+        sampling_parameters["n_samples_inner_expectation_caus"],
+        sampling_parameters["n_samples_outer_expectation_caus"],
     )
 
     # dict of the form {candidate_name: {sample_size: EIG}}
@@ -139,8 +140,9 @@ def bart_eig_from_samples_varying_sample_size(
         dlen = data[length]  # for convenience
 
         ### Bayesian update on host data using closed form
-        X_host = torch.from_numpy(dlen["host"].drop(columns=["Y"]).values)
-        Y_host = torch.from_numpy(dlen["host"]["Y"].values)
+        X_host_not_T = dlen["host"].drop(columns=["Y","T"]).values
+        T_host = dlen["host"]["T"].values.astype(np.int32)    
+        Y_host = dlen["host"]["Y"].values
         # fit the posterior (updates the params in the model class)
         bcf = BayesianCausalForest(
             prior_hyperparameters,
@@ -148,15 +150,15 @@ def bart_eig_from_samples_varying_sample_size(
             conditional_model_param=conditional_model_param,
         )
 
-        bcf.store_train_data(X=X_host, T=T_host, Y=Y_host)
+        bcf.store_train_data(X=X_host_not_T, T=T_host, Y=Y_host)
 
         if verbose:
             print(f"For a sample size of {length}")
             print(f" % treated in host: {int(100 * dlen['host']['T'].mean())}%")
 
         for cand in candidates_names:
-            X_cand_not_T = torch.from_numpy(dlen[cand].drop(columns=["Y","T"]).values)
-            T_cand = torch.from_numpy(dlen[cand]["T"].values)
+            X_cand_not_T = dlen[cand].drop(columns=["Y","T"]).values
+            T_cand = dlen[cand]["T"].values.astype(np.int32)
 
             if verbose:
                 print(f" % treated in {cand}: {int(100 * dlen[cand]['T'].mean())}%")
@@ -622,8 +624,8 @@ def bart_eig_from_samples_varying_sample_size(
 # if __name__ == "__main__":
 #     from rct_data_generator import _main
 
-    _, data_parameters = _main()
-    exact_data = generate_exact_synthetic_data_varying_sample_size(data_parameters)
+    # _, data_parameters = _main()
+    # exact_data = generate_exact_synthetic_data_varying_sample_size(data_parameters)
 
 #     sigma_prior = 1.0
 #     sigma_rand_error = 1.0

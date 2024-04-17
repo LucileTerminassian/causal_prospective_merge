@@ -4,6 +4,7 @@ import numpy as np
 from sklearn.metrics import r2_score
 import pandas as pd
 from datetime import datetime
+from typing import Union
 
 
 def plot_densities(y1, y2, y3, names, title):
@@ -94,10 +95,10 @@ def plot_array(
     x,
     arr,
     axis_names,
-    dict_additional_plots: dict | None = None,
-    text: str | None = None,
-    title: str | None = None,
-    save: str | None = None,
+    dict_additional_plots: Union [dict, None] = None,
+    text: Union [str, None] = None,
+    title: Union[str, None] = None,
+    save: Union[str, None] = None,
 ):
 
     plt.figure(figsize=(10, 6))

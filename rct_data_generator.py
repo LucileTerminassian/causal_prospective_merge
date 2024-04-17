@@ -2,6 +2,7 @@ from typing import Any, Callable
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder
+from typing import Union
 
 
 def get_data(dataset: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
@@ -43,7 +44,7 @@ def get_data(dataset: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Se
 
 
 def generate_rct(
-    x_sampled_covariates: dict[str, np.ndarray], seed: int | None = 0
+    x_sampled_covariates: dict[str, np.ndarray], seed: Union [int, None] = 0
 ) -> pd.DataFrame:
     """
     Generate a randomised controlled trial (RCT) dataset.
@@ -116,8 +117,8 @@ def generate_design_matrix(
 def append_outcome(
     data: pd.DataFrame,
     outcome_function: Callable,
-    noise_scale: float | None = None,
-    eps: np.ndarray | None = None,
+    noise_scale: Union [float, None] = None,
+    eps: Union [np.ndarray, None] = None,
 ) -> pd.DataFrame:
     """
     Generate y = outcome_function(X, T) + N(0, noise_scale)
@@ -154,7 +155,7 @@ def subsample_two_complementary_datasets(
     outcome_function: Callable,
     std_true_y: float,
     include_intercept: bool = True,
-    seed: int | None = 0,
+    seed: Union[int, None] = 0,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Generate host and its complementary data for a synthetic RCT.
@@ -237,7 +238,7 @@ def subsample_one_dataset(
     outcome_function: Callable,
     std_true_y: float,
     include_intercept: bool = True,
-    seed: int | None = 0,
+    seed: Union [int, None] = 0,
 ) -> pd.DataFrame:
     if sample_size > XandT.shape[0]:
         raise ValueError("sample_size > n_global")
@@ -268,8 +269,8 @@ def subsample_one_dataset(
 
 def generate_data_varying_sample_size(
     data_parameters: dict[str, Any],
-    X_rct: pd.DataFrame | None = None,
-    T_rct: np.ndarray | None = None,
+    X_rct: Union [pd.DataFrame, None] = None,
+    T_rct: Union [np.ndarray, None] = None,
     include_intercept: bool = True,
 ) -> dict[int, dict]:
     # if X_rct and T_rct are None, generate them; if not, use them
@@ -329,8 +330,8 @@ def generate_data_varying_sample_size(
 
 def generate_exact_data_varying_sample_size(
     data_parameters: dict[str, Any],
-    X_rct: pd.DataFrame | None = None,
-    T_rct: np.ndarray | None = None,
+    X_rct: Union [pd.DataFrame, None] = None,
+    T_rct: Union [np.ndarray, None] = None,
     include_intercept: bool = True,
 ) -> dict[int, dict]:
     n_host = data_parameters["n_host"]
