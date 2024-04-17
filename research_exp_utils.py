@@ -88,7 +88,7 @@ def linear_eig_from_samples_varying_sample_size(
         Y_host = torch.from_numpy(dlen["host"]["Y"].values)
         # fit the posterior (updates the params in the model class)
         bayes_reg.fit(X_host, Y_host)
-        n_samples = n_samples_outer_expectation * (n_samples_inner_expectation + 1)
+        
 
         if verbose:
             print(f"For a sample size of {length}")
@@ -100,9 +100,9 @@ def linear_eig_from_samples_varying_sample_size(
                 print(f" % treated in {cand}: {int(100 * dlen[cand]['T'].mean())}%")
 
             EIG_obs[cand].append(bayes_reg.samples_obs_EIG(
-                X_cand, n_samples_outer_expectation, n_samples_inner_expectation))
+                X_cand, n_samples_outer_expectation_obs, n_samples_inner_expectation_obs))
             EIG_caus[cand].append(bayes_reg.samples_causal_EIG(
-                X_cand, n_causal_outer_exp, n_causal_inner_exp))
+                X_cand, n_samples_outer_expectation_caus, n_samples_inner_expectation_caus))
 
     return EIG_obs, EIG_caus
 
