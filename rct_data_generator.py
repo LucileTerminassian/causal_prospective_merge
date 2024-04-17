@@ -289,12 +289,9 @@ def generate_data_varying_sample_size(
                 x_distributions is not None
             ), "Need x_distributions if X_rct and T_rct are None"
             XandT = generate_rct(x_distributions, seed=seed)
-            # TODO: check if should be the same or different
-            # pre_XandT_cand2 = generate_rct(x_distributions, seed=seed)
         else:
             assert X_rct is not None and T_rct is not None, "Need both X_rct and T_rct"
             XandT = pd.concat([X_rct, pd.DataFrame(T_rct, columns=["T"])], axis=1)
-            pre_XandT_cand2 = XandT.copy()  # same as XandT
 
         design_data_host, design_data_comp = subsample_two_complementary_datasets(
             XandT=XandT,
@@ -310,7 +307,7 @@ def generate_data_varying_sample_size(
         )
 
         design_data_cand2 = subsample_one_dataset(
-            XandT=pre_XandT_cand2,
+            XandT=XandT,
             assignment_function=data_parameters["p_assigned_to_cand2"],
             sample_size=data_parameters["proportion"] * length,
             power_x=power_x,
