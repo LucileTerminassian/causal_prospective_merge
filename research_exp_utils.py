@@ -622,8 +622,8 @@ def bart_eig_from_samples_varying_sample_size(
 # if __name__ == "__main__":
 #     from rct_data_generator import _main
 
-#     _, data_parameters = _main()
-#     exact_data = generate_exact_synthetic_data_varying_sample_size(data_parameters)
+    _, data_parameters = _main()
+    exact_data = generate_exact_synthetic_data_varying_sample_size(data_parameters)
 
 #     sigma_prior = 1.0
 #     sigma_rand_error = 1.0
