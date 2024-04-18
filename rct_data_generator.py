@@ -5,7 +5,7 @@ from sklearn.preprocessing import OneHotEncoder
 from typing import Union
 
 
-def get_data(dataset: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+def get_data(dataset: str, path: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
     """
     Get the data for the specified dataset.
 
@@ -17,14 +17,14 @@ def get_data(dataset: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Se
         tuple[pd.DataFrame, pd.DataFrame, np.ndarray, np.ndarray]: data, covariates, treatment assignment, and outcomes
     """
     if dataset == "twins":
-        data = pd.read_csv("data/twins_ztwins_sample0.csv")
+        data = pd.read_csv(path + "data/twins_ztwins_sample0.csv")
         x = data.drop(columns=["y0", "y1", "ite", "y", "t"])
         t = data["t"]
         y = data["y"]
 
     elif dataset == "acic":
-        data = pd.read_csv("./acic_zymu_174570858.csv")
-        x = pd.read_csv("./data/acic_x.csv")
+        data = pd.read_csv(path + "data/acic_zymu_174570858.csv")
+        x = pd.read_csv(path + "data/acic_x.csv")
         t = data["z"]
         y = data["y0"]
         idx_to_change = data.loc[data["z"] == 1].index.to_list()
