@@ -89,9 +89,9 @@ def generate_design_matrix(
     n, d = np.shape(X)
 
     # Initialize the design matrix
-    X_prime = pd.DataFrame(index=range(n))
+    X_prime = pd.DataFrame(index=X.index)
     if include_intercept:
-        X_prime["intercept"] = 1.0  # interept column, set to 1
+        X_prime["intercept"] = 1.0  # intercept column, set to 1
     X_prime = pd.concat([X_prime, X], axis=1)  # append X to X_prime
 
     # Concatenate X^i for i=2 upto power_x
@@ -245,7 +245,7 @@ def subsample_one_dataset(
     if seed is not None:
         np.random.seed(seed)
 
-    data = pd.DataFrame(index=range(sample_size), columns=XandT.columns, dtype=float)
+    data = pd.DataFrame(index=range(sample_size), columns=XandT.columns, dtype=float) 
     count_cand2 = 0
     for _, x_and_t in XandT.iterrows():
         proba_assigned_to_cand2 = assignment_function(
@@ -253,7 +253,9 @@ def subsample_one_dataset(
         )
         is_assigned_to_cand2 = np.random.binomial(1, proba_assigned_to_cand2)
         if is_assigned_to_cand2 and count_cand2 < sample_size:
-            data.loc[count_cand2] = x_and_t
+            # data.loc[count_cand2] = x_and_t
+            data.iloc[count_cand2] = x_and_t
+            data = data.rename(index={count_cand2: x_and_t.name})
             count_cand2 += 1
 
         if count_cand2 == sample_size:
@@ -263,7 +265,8 @@ def subsample_one_dataset(
         len(data) == sample_size
     ), f"Expected len(data)={sample_size}, got {len(data)}"
     design_data = generate_design_matrix(data, power_x, power_x_t, include_intercept)
-    design_data = append_outcome(design_data, outcome_function, std_true_y)
+    if outcome_function is not None:
+        design_data = append_outcome(design_data, outcome_function, std_true_y)
     return design_data
 
 
