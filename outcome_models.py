@@ -1,15 +1,10 @@
 import numpy as np
-import pandas as pd
-import scipy.stats as stats
-import matplotlib.pyplot as plt
-from scipy.stats import entropy, gaussian_kde, multivariate_normal
-import sys
+from scipy.stats import multivariate_normal
 import torch
 
 torch.set_default_tensor_type(torch.FloatTensor)  # set the default to float32
-import pyro
-import pyro.distributions as dist
-from pyro.infer import MCMC, NUTS
+
+
 from eig_comp_utils import (
     compute_EIG_causal_closed_form,
     compute_EIG_obs_closed_form,
@@ -25,17 +20,14 @@ from tqdm import tqdm
 
 
 def posterior_mean(X, y, sigma_sq, cov_posterior_inv):
-
     return 1 / sigma_sq * cov_posterior_inv @ (X.T @ y)
 
 
 def posterior_covariance_inv(X, sigma_sq, S0_inv):
-
     return 1 / sigma_sq * X.T @ X + S0_inv
 
 
 class BayesianLinearRegression:
-
     def __init__(self, prior_hyperparameters, model="linear_reg"):
         self.model = model
         self.prior_hyperparameters = prior_hyperparameters
@@ -215,7 +207,6 @@ class BayesianLinearRegression:
 
 
 class BayesianCausalForest:
-
     def __init__(
         self,
         prior_hyperparameters,
@@ -361,7 +352,6 @@ class BayesianCausalForest:
         posterior_predictive_entropy = self.samples_obs_EIG(
             X, T, n_samples_outer_expectation, n_samples_inner_expectation
         ) + n_e / 2 * (1 + np.log(2 * np.pi * self.sigma_0_sq))
-
         predictions, tau_pred = self.posterior_sample_predictions(
             X=X, T=T, n_samples=n_samples_outer_expectation, return_tau=True
         )
@@ -375,8 +365,10 @@ class BayesianCausalForest:
             conditional_predictions = self.posterior_conditional_predictions(
                 X=X, T=T, Y_residuals=Y_resid, n_samples=n_samples_inner_expectation
             )
-            conditional_predictions = conditional_predictions 
-            causal_sample.append((predictions[i]-tau_pred[i], conditional_predictions))
+            conditional_predictions = conditional_predictions
+            causal_sample.append(
+                (predictions[i] - tau_pred[i], conditional_predictions)
+            )
         return posterior_predictive_entropy - calc_posterior_predictive_entropy(
             causal_sample, self.sigma_0_sq ** (1 / 2)
         )
@@ -396,9 +388,11 @@ class BayesianCausalForest:
             n_samples_inner_expectation_obs + 1
         )
         print("Sampling from Posterior")
+
         predicitions_obs, tau_pred = self.posterior_sample_predictions(
             X=X, T=T, n_samples=n_samples, return_tau=True
         )
+
         predictions_in_form = predictions_in_EIG_obs_form(
             predicitions_obs,
             n_samples_outer_expectation_obs,
