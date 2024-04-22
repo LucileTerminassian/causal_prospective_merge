@@ -93,22 +93,26 @@ def plot_non_diff_array(
 
 def plot_array(
     x,
-    arr,
-    axis_names,
+    arr_list: list,
+    label_names: list,
+    axis_names: list,
     dict_additional_plots: Union [dict, None] = None,
     text: Union [str, None] = None,
     title: Union[str, None] = None,
     save: Union[str, None] = None,
-):
-
+): #TODO plot difference! this is only a mean of the entire array
     plt.figure(figsize=(10, 6))
-    mean_data = np.mean(arr, axis=0)
-    std_data = np.std(arr, axis=0)
 
-    plt.plot(x, mean_data, label="complementary - twin", color="blue")
-    plt.fill_between(
-        x, mean_data - std_data, mean_data + std_data, color="blue", alpha=0.3
-    )
+    for i, array in enumerate(arr_list):
+    
+        mean_data = np.mean(array, axis=0)
+        std_data = np.std(array, axis=0)
+
+        plt.plot(x, mean_data, label=label_names[i])
+        plt.fill_between(
+            x, mean_data - std_data, mean_data + std_data, alpha=0.3
+        )
+
     if dict_additional_plots is not None:
         for key, value in dict_additional_plots.items():
             plt.plot(x, value, label=key)
