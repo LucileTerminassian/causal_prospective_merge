@@ -2,6 +2,7 @@ import numpy as np
 from scipy.stats import multivariate_normal
 import torch
 
+
 torch.set_default_tensor_type(torch.FloatTensor)  # set the default to float32
 
 
@@ -17,6 +18,7 @@ from eig_comp_utils import (
 from xbcausalforest import XBCF
 from xbart import XBART
 from tqdm import tqdm
+from cmgp import CMGP
 
 
 def posterior_mean(X, y, sigma_sq, cov_posterior_inv):
@@ -438,3 +440,104 @@ class BayesianCausalForest:
             ),
         }
         return results_dict
+
+class CausalGP:
+
+    def __init__(self,max_gp_iterations=100) -> None:
+        self.max_gp_iterations = max_gp_iterations
+        self.model = None
+
+    def fit(self,X_train,T_train,Y_train):
+        self.model = CMGP(X_train, T_train, Y_train, max_gp_iterations = self.max_gp_iterations)
+
+        self.X0_train =  np.array(
+                np.hstack([X_train, np.zeros_like(X_train[:, 1].reshape((len(X_train[:, 1]), 1)))])
+            )
+        self.X1_train =  np.array(
+                np.hstack([X_train, np.ones_like(X_train[:, 1].reshape((len(X_train[:, 1]), 1)))])
+            )
+        return None
+
+    def pred_CATE(self,X_test):
+        return self.model.predict(X_test)
+    
+    def obs_EIG_closed_form(self,X,T):
+        
+        X0 = X[T==0]
+        X0 = np.array(
+                np.hstack([X0, np.zeros_like(X0[:, 1].reshape((len(X0[:, 1]), 1)))])
+            )
+        X1 = X[T==1]
+        X1 = np.array(
+    
+    np.hstack([X1, np.ones_like(X1[:, 1].reshape((len(X1[:, 1]), 1)))])
+            )
+        
+        X0_shape = X0.shape
+        X1_shape = X1.shape
+        noise_dict_0 = {
+            "output_index": X0[:, X0_shape[1] - 1]
+            .reshape((X0_shape[0], 1))
+            .astype(int)}
+        noise_dict_1 = {
+            "output_index": X1[:, X1_shape[1] - 1]
+            .reshape((X1_shape[0], 1))
+            .astype(int)}
+        
+        Sigma_1 = np.block(
+            [[self.model.model.posterior_covariance_between_points(X0,X0,Y_metadata=noise_dict_0), self.model.model.posterior_covariance_between_points(X0,X1,include_likelihood=False) ],
+            [self.model.model.posterior_covariance_between_points(X1,X0,include_likelihood=False), self.model.model.posterior_covariance_between_points(X1,X1,Y_metadata=noise_dict_1) ]]
+        )
+
+        n_1,n_0 = len(X1),len(X0)
+
+        sign, logdet = np.linalg.slogdet(Sigma_1)
+        return 0.5*(logdet - n_0 * np.log(self.model.model.likelihood[0]) - n_1 * np.log(self.model.model.likelihood[1]))
+    
+    def causal_EIG_closed_form(self,X,T):
+        
+        X0 = X[T==0]
+        X0 = np.array(
+                np.hstack([X0, np.zeros_like(X0[:, 1].reshape((len(X0[:, 1]), 1)))])
+            )
+        X1 = X[T==1]
+        X1 = np.array(
+    
+    np.hstack([X1, np.ones_like(X1[:, 1].reshape((len(X1[:, 1]), 1)))])
+            )
+        
+        X0_shape = X0.shape
+        X1_shape = X1.shape
+        noise_dict_0 = {
+            "output_index": X0[:, X0_shape[1] - 1]
+            .reshape((X0_shape[0], 1))
+            .astype(int)}
+        noise_dict_1 = {
+            "output_index": X1[:, X1_shape[1] - 1]
+            .reshape((X1_shape[0], 1))
+            .astype(int)}
+        
+        Sigma_1 = np.block(
+            [[self.model.model.posterior_covariance_between_points(X0,X0,Y_metadata=noise_dict_0), self.model.model.posterior_covariance_between_points(X0,X1,include_likelihood=False) ],
+            [self.model.model.posterior_covariance_between_points(X1,X0,include_likelihood=False), self.model.model.posterior_covariance_between_points(X1,X1,Y_metadata=noise_dict_1) ]]
+        )
+
+        Sigma_2 = self.model.model.posterior_covariance_between_points(self.X0_train,self.X0_train,include_likelihood=False)+self.model.model.posterior_covariance_between_points(self.X1_train,self.X1_train,include_likelihood=False)-2*self.model.model.posterior_covariance_between_points(self.X0_train,self.X1_train,include_likelihood=False)
+
+        Sigma_join = np.concatenate([
+            self.model.model.posterior_covariance_between_points(self.X1_train,X0,include_likelihood=False)-self.model.model.posterior_covariance_between_points(self.X1_train,X0,include_likelihood=False),
+            self.model.model.posterior_covariance_between_points(self.X1_train,X1,include_likelihood=False)-self.model.model.posterior_covariance_between_points(self.X1_train,X1,include_likelihood=False)
+                                     ],axis=1)
+        
+        Sigma = np.block([
+            [Sigma_1, Sigma_join.T],
+            [Sigma_join, Sigma_2]
+        ]
+
+        )
+    
+
+        sign, logdet1 = np.linalg.slogdet(Sigma_1)
+        sign, logdet2 = np.linalg.slogdet(Sigma_2)
+        sign, logdet_sig = np.linalg.slogdet(Sigma)
+        return logdet1+logdet2-logdet_sig
