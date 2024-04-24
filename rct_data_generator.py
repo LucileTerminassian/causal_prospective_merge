@@ -275,10 +275,9 @@ def generate_data_varying_sample_size(
     X_rct: Union [pd.DataFrame, None] = None,
     T_rct: Union [np.ndarray, None] = None,
     include_intercept: bool = True,
-    length_specific_seeds: list = None,
 ) -> dict[int, dict]:
     # if X_rct and T_rct are None, generate them; if not, use them
-    # need "x_distributions" to being the data_parameters if X_rct and T_rct are None
+    # need "x_distributions" to bein the data_parameters if X_rct and T_rct are None
     x_distributions = data_parameters.get("x_distributions", None)
     power_x = data_parameters["power_x"]
     power_x_t = data_parameters["power_x_t"]
@@ -287,20 +286,16 @@ def generate_data_varying_sample_size(
 
     data = {}
 
-    for i, length in enumerate(data_parameters["n_both_candidates_list"]):
+    for seed, length in enumerate(data_parameters["n_both_candidates_list"]):
         # should the generation be outside of the loop actually?
-
         if X_rct is None and T_rct is None:
             assert (
                 x_distributions is not None
             ), "Need x_distributions if X_rct and T_rct are None"
-            XandT = generate_rct(x_distributions, seed=length_specific_seeds[i]) #should be different according to seed and length
+            XandT = generate_rct(x_distributions, seed=seed)
         else:
             assert X_rct is not None and T_rct is not None, "Need both X_rct and T_rct"
             XandT = pd.concat([X_rct, pd.DataFrame(T_rct, columns=["T"])], axis=1)
-
-        np.random.seed(length_specific_seeds[i])
-        subsampling_seeds = np.random.randint(0, 1000 + 1, size=2)
 
         design_data_host, design_data_comp = subsample_two_complementary_datasets(
             XandT=XandT,
@@ -312,7 +307,7 @@ def generate_data_varying_sample_size(
             outcome_function=outcome_function,
             std_true_y=std_true_y,
             include_intercept=include_intercept,
-            seed=subsampling_seeds[0],
+            seed=seed,
         )
 
         design_data_cand2 = subsample_one_dataset(
@@ -324,7 +319,7 @@ def generate_data_varying_sample_size(
             outcome_function=outcome_function,
             std_true_y=std_true_y,
             include_intercept=include_intercept,
-            seed=subsampling_seeds[1],
+            seed=seed,
         )
 
         data[length] = {
@@ -341,7 +336,6 @@ def generate_exact_data_varying_sample_size(
     X_rct: Union [pd.DataFrame, None] = None,
     T_rct: Union [np.ndarray, None] = None,
     include_intercept: bool = True,
-    length_specific_seeds: list = None,
 ) -> dict[int, dict]:
     n_host = data_parameters["n_host"]
     power_x = data_parameters["power_x"]
@@ -351,10 +345,10 @@ def generate_exact_data_varying_sample_size(
 
     data = {}
 
-    for i, length in enumerate(data_parameters["n_both_candidates_list"]):
+    for seed, length in enumerate(data_parameters["n_both_candidates_list"]):
         # should the generation be outside of the loop actually?
         if X_rct is None and T_rct is None:
-            XandT = generate_rct(data_parameters["x_distributions"], seed=length_specific_seeds[i])
+            XandT = generate_rct(data_parameters["x_distributions"], seed=seed)
         else:
             assert X_rct is not None and T_rct is not None, "Need both X_rct and T_rct"
             XandT = pd.concat([X_rct, pd.DataFrame(T_rct, columns=["T"])], axis=1)
@@ -369,7 +363,7 @@ def generate_exact_data_varying_sample_size(
             outcome_function=outcome_function,
             std_true_y=std_true_y,
             include_intercept=include_intercept,
-            seed=length_specific_seeds[i],
+            seed=seed,
         )  # complementary data isn't used.
 
         # get the covariates only (no intercept)
@@ -426,7 +420,7 @@ def generate_exact_data_varying_sample_size(
 
 def _main():
     n_both_candidates_list = [200]  # , 500, 1000
-    proportion = 1  # n_cand2 = proportion * n_both_candidates_list
+    proportion = 1  # n_cand2 = prorportion * n_both_candidates_list
     std_true_y = 1
     np.random.seed(42)
 
