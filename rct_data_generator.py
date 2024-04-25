@@ -44,7 +44,7 @@ def get_data(dataset: str, path: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.Se
 
 
 def generate_rct(
-    x_sampled_covariates: dict[str, np.ndarray], seed: Union [int, None] = 0
+    x_sampled_covariates: dict[str, np.ndarray], seed: int = 0
 ) -> pd.DataFrame:
     """
     Generate a randomised controlled trial (RCT) dataset.
@@ -56,8 +56,7 @@ def generate_rct(
         pd.DataFrame: dataframe containing covariates and a column "T" corresponding to
             treatment assignment
     """
-    if seed is not None:
-        np.random.seed(seed)
+    np.random.seed(seed)
     X = pd.DataFrame.from_dict(x_sampled_covariates)
     X["T"] = np.random.randint(0, 2, size=X.shape[0])  # Generate T
     return X
@@ -155,7 +154,7 @@ def subsample_two_complementary_datasets(
     outcome_function: Callable,
     std_true_y: float,
     include_intercept: bool = True,
-    seed: Union[int, None] = 0,
+    seed: int = 0,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Generate host and its complementary data for a synthetic RCT.
@@ -180,15 +179,13 @@ def subsample_two_complementary_datasets(
 
     if n_host + n_complementary > XandT.shape[0]:
         raise ValueError("n_host + n_complementary > n_rct")
-    if seed is not None:
-        np.random.seed(seed)
+    np.random.seed(seed)
 
     # Initialize dataframes for the host and its complementary
     data_host = pd.DataFrame(index=range(n_host), columns=XandT.columns, dtype=float)
     data_complementary = pd.DataFrame(
         index=range(n_complementary), columns=XandT.columns, dtype=float
     )
-
     count_complementary, count_host = 0, 0
     for _, x_and_t in XandT.iterrows():
         proba_assigned_to_host = f_assigned_to_host(
@@ -238,12 +235,11 @@ def subsample_one_dataset(
     outcome_function: Callable,
     std_true_y: float,
     include_intercept: bool = True,
-    seed: Union [int, None] = 0,
+    seed: int = 0,
 ) -> pd.DataFrame:
     if sample_size > XandT.shape[0]:
         raise ValueError("sample_size > n_global")
-    if seed is not None:
-        np.random.seed(seed)
+    np.random.seed(seed)
 
     data = pd.DataFrame(index=range(sample_size), columns=XandT.columns, dtype=float) 
     count_cand2 = 0
@@ -275,6 +271,7 @@ def generate_data_varying_sample_size(
     X_rct: Union [pd.DataFrame, None] = None,
     T_rct: Union [np.ndarray, None] = None,
     include_intercept: bool = True,
+    seed: int=0,
 ) -> dict[int, dict]:
     # if X_rct and T_rct are None, generate them; if not, use them
     # need "x_distributions" to bein the data_parameters if X_rct and T_rct are None
@@ -285,41 +282,57 @@ def generate_data_varying_sample_size(
     std_true_y = data_parameters["std_true_y"]
 
     data = {}
+    np.random.seed(seed)
+    seed_for_each_length = np.random.randint(0, 1001, size=len(data_parameters["varying_sample_sizes"]))
 
-    for seed, length in enumerate(data_parameters["n_both_candidates_list"]):
+    for i, length in enumerate(data_parameters["varying_sample_sizes"]):
         # should the generation be outside of the loop actually?
         if X_rct is None and T_rct is None:
             assert (
                 x_distributions is not None
             ), "Need x_distributions if X_rct and T_rct are None"
-            XandT = generate_rct(x_distributions, seed=seed)
+            XandT = generate_rct(x_distributions, seed=seed_for_each_length[i])
         else:
             assert X_rct is not None and T_rct is not None, "Need both X_rct and T_rct"
             XandT = pd.concat([X_rct, pd.DataFrame(T_rct, columns=["T"])], axis=1)
 
-        design_data_host, design_data_comp = subsample_two_complementary_datasets(
-            XandT=XandT,
-            f_assigned_to_host=data_parameters["p_assigned_to_host"],  # host?
-            n_host=data_parameters["n_host"],
-            n_complementary=length,
-            power_x=power_x,
-            power_x_t=power_x_t,
-            outcome_function=outcome_function,
-            std_true_y=std_true_y,
-            include_intercept=include_intercept,
-            seed=seed,
-        )
+        if data_parameters["fixed_n_complementary"] is not None: # only cand2 length varies
+            design_data_host, design_data_comp = subsample_two_complementary_datasets(
+                XandT=XandT,
+                f_assigned_to_host=data_parameters["p_assigned_to_host"],  # host?
+                n_host=data_parameters["n_host"],
+                n_complementary=data_parameters["fixed_n_complementary"],
+                power_x=power_x,
+                power_x_t=power_x_t,
+                outcome_function=outcome_function,
+                std_true_y=std_true_y,
+                include_intercept=include_intercept,
+                seed=seed_for_each_length[i],
+            )
+        else:
+            design_data_host, design_data_comp = subsample_two_complementary_datasets(
+                XandT=XandT,
+                f_assigned_to_host=data_parameters["p_assigned_to_host"],  # host?
+                n_host=data_parameters["n_host"],
+                n_complementary=length,
+                power_x=power_x,
+                power_x_t=power_x_t,
+                outcome_function=outcome_function,
+                std_true_y=std_true_y,
+                include_intercept=include_intercept,
+                seed=seed_for_each_length[i],
+            )
 
         design_data_cand2 = subsample_one_dataset(
             XandT=XandT,
             assignment_function=data_parameters["p_assigned_to_cand2"],
-            sample_size=data_parameters["proportion"] * length,
+            sample_size=length,
             power_x=power_x,
             power_x_t=power_x_t,
             outcome_function=outcome_function,
             std_true_y=std_true_y,
             include_intercept=include_intercept,
-            seed=seed,
+            seed=seed_for_each_length[i],
         )
 
         data[length] = {
@@ -336,6 +349,7 @@ def generate_exact_data_varying_sample_size(
     X_rct: Union [pd.DataFrame, None] = None,
     T_rct: Union [np.ndarray, None] = None,
     include_intercept: bool = True,
+    seed: int=0,
 ) -> dict[int, dict]:
     n_host = data_parameters["n_host"]
     power_x = data_parameters["power_x"]
@@ -344,11 +358,13 @@ def generate_exact_data_varying_sample_size(
     std_true_y = data_parameters["std_true_y"]
 
     data = {}
+    np.random.seed(seed)
+    seed_for_each_length = np.random.randint(0, 1001, size=len(data_parameters["varying_sample_sizes"]))
 
-    for seed, length in enumerate(data_parameters["n_both_candidates_list"]):
+    for i, length in enumerate(data_parameters["varying_sample_sizes"]):
         # should the generation be outside of the loop actually?
         if X_rct is None and T_rct is None:
-            XandT = generate_rct(data_parameters["x_distributions"], seed=seed)
+            XandT = generate_rct(data_parameters["x_distributions"], seed=seed_for_each_length[i])
         else:
             assert X_rct is not None and T_rct is not None, "Need both X_rct and T_rct"
             XandT = pd.concat([X_rct, pd.DataFrame(T_rct, columns=["T"])], axis=1)
@@ -363,7 +379,7 @@ def generate_exact_data_varying_sample_size(
             outcome_function=outcome_function,
             std_true_y=std_true_y,
             include_intercept=include_intercept,
-            seed=seed,
+            seed=seed_for_each_length[i],
         )  # complementary data isn't used.
 
         # get the covariates only (no intercept)
@@ -419,8 +435,8 @@ def generate_exact_data_varying_sample_size(
 
 
 def _main():
-    n_both_candidates_list = [200]  # , 500, 1000
-    proportion = 1  # n_cand2 = prorportion * n_both_candidates_list
+    varying_sample_sizes = [200]  # , 500, 1000
+    proportion = 1  # n_cand2 = prorportion * varying_sample_sizes
     std_true_y = 1
     np.random.seed(42)
 
@@ -460,8 +476,7 @@ def _main():
 
     # doesn't have p_assigned_to_host!
     data_parameters = {
-        "n_both_candidates_list": n_both_candidates_list,
-        "proportion": proportion,
+        "varying_sample_sizes": varying_sample_sizes,
         "n_rct_before_split": n_rct_before_split,
         "x_distributions": x_distributions,
         "p_assigned_to_cand2": p_assigned_to_cand2,

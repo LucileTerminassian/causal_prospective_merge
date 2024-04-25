@@ -35,93 +35,50 @@ def predict_with_all_sampled_linear(beta_df, X):
     return coefficients @ X.T
 
 
-def plot_non_diff_array(
-    dict_additional_plots,
+def plot_dict(
     x,
-    arr,
-    axis_names,
-    names,
-    text=False,
-    title=False,
-    save=False,
-):
-
-    n_lines = np.shape(arr)[0]
-    plt.figure(figsize=(10, 6))
-    plt.plot(x, arr[0, :], color="blue", label=names[0])
-    plt.plot(x, arr[1, :], color="orange", label=names[1])
-
-    if n_lines > 2:
-        for i in range(2, n_lines):
-            if i % 2 == 0:
-                plt.plot(x, arr[i, :], color="blue")
-            if i % 2 == 1:
-                plt.plot(x, arr[i, :], color="orange")
-
-    if dict_additional_plots["complementary"]:
-        complementary = dict_additional_plots["complementary"]
-        plt.plot(x, complementary, label="Exact complementary")
-    if dict_additional_plots["twin"]:
-        twin = dict_additional_plots["twin"]
-        plt.plot(x, twin, label="Exact twin")
-    if dict_additional_plots["twin_treated"]:
-        twin_treated = dict_additional_plots["twin_treated"]
-        plt.plot(x, twin_treated, label="Exact twin treated")
-    if dict_additional_plots["twin_untreated"]:
-        twin_untreated = dict_additional_plots["twin_untreated"]
-        plt.plot(x, twin_untreated, label="Exact twin untreated")
-
-    if title:
-        plt.title(title)
-    plt.ylabel(axis_names[1])
-    plt.xlabel(axis_names[0])
-    plt.legend()
-
-    if text:
-        plt.text(
-            0.5, -0.2, text, ha="center", va="center", transform=plt.gca().transAxes
-        )
-
-    if save:
-        current_time = datetime.now().strftime("%H:%M:%S")
-        current_date = datetime.now().strftime("%Y-%m-%d")
-        filename = f"{save}_{current_date}_{current_time}.pdf"
-        plt.savefig(filename)
-
-    plt.show()
-
-
-def plot_array(
-    x,
-    arr,
-    axis_names,
+    dict: dict,
+    axis_names: list,
+    color_dict: dict = None,
     dict_additional_plots: Union [dict, None] = None,
     text: Union [str, None] = None,
     title: Union[str, None] = None,
     save: Union[str, None] = None,
-    label: str = None,
+    second_axis: Union[bool, dict] = False,
 ):
+    plt.figure(figsize=(15, 10))
+    fig, ax1 = plt.subplots()
 
-    plt.figure(figsize=(10, 6))
-    mean_data = np.mean(arr, axis=0)
-    std_data = np.std(arr, axis=0)
-
-    plt.plot(x, mean_data, label=label, color="blue")
-    plt.fill_between(
-        x, mean_data - std_data, mean_data + std_data, color="blue", alpha=0.3
-    )
+    for label, arr in dict.items():
+        mean_data = np.mean(arr, axis=0)
+        std_data = np.std(arr, axis=0)
+        color = color_dict[label] if color_dict is not None else "blue"
+        ax1.plot(x, mean_data, label=label, color=color)
+        ax1.fill_between(
+            x, mean_data - std_data, mean_data + std_data, color=color, alpha=0.3
+        )
     if dict_additional_plots is not None:
-        for key, value in dict_additional_plots.items():
-            plt.plot(x, value, label=key)
+        for key, arr in dict_additional_plots.items():
+            ax1.plot(x, arr, label=key)
+
+    ax1.set_ylabel(axis_names[1])
+    ax1.set_xlabel(axis_names[0])
+    ax1.legend()
+
+    if second_axis:
+        ax2 = ax1.twinx() 
+        for label, arr in second_axis.items():
+            ax2.plot(x, arr, label=label)
+        ax2.set_ylabel(axis_names[2])
+        ax2.legend()
+
+    fig.tight_layout()
 
     if title is not None:
-        plt.title(title)
-    plt.ylabel(axis_names[1])
-    plt.xlabel(axis_names[0])
-    plt.legend()
+        fig.suptitle(title)
 
     if text is not None:
-        plt.text(
+        fig.text(
             0.5, -0.2, text, ha="center", va="center", transform=plt.gca().transAxes
         )
 
