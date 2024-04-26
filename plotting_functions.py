@@ -44,10 +44,10 @@ def plot_dict(
     text: Union [str, None] = None,
     title: Union[str, None] = None,
     save: Union[str, None] = None,
-    second_axis: Union[bool, dict] = False,
+    second_axis: Union[dict, None] = None,
 ):
-    plt.figure(figsize=(15, 10))
-    fig, ax1 = plt.subplots()
+
+    fig, ax1 = plt.subplots(figsize=(13, 8))
 
     for label, arr in dict.items():
         mean_data = np.mean(arr, axis=0)
@@ -61,16 +61,16 @@ def plot_dict(
         for key, arr in dict_additional_plots.items():
             ax1.plot(x, arr, label=key)
 
-    ax1.set_ylabel(axis_names[1])
-    ax1.set_xlabel(axis_names[0])
-    ax1.legend()
+    ax1.set_ylabel(axis_names[1], fontsize=12)
+    ax1.set_xlabel(axis_names[0], fontsize=20)
+    if second_axis is None: 
+        ax1.legend(loc='lower center', bbox_to_anchor=(0.5, -0.2), ncol=len(dict.keys()))
 
     if second_axis:
         ax2 = ax1.twinx() 
         for label, arr in second_axis.items():
             ax2.plot(x, arr, label=label)
-        ax2.set_ylabel(axis_names[2])
-        ax2.legend()
+        ax2.set_ylabel(axis_names[2], fontsize=12, rotation=270, labelpad=15)
 
     fig.tight_layout()
 
@@ -81,11 +81,19 @@ def plot_dict(
         fig.text(
             0.5, -0.2, text, ha="center", va="center", transform=plt.gca().transAxes
         )
+    
+    # Combine legends from both axes
+    lines, labels = ax1.get_legend_handles_labels()
+    if second_axis:
+        lines2, labels2 = ax2.get_legend_handles_labels()
+        ax2.legend(lines + lines2, labels + labels2, loc='lower center', bbox_to_anchor=(0.5, -0.2), ncol=3)
+    
+    ax1.axhline(y=0, color='gray', linestyle='--', linewidth=1)
 
     if save:
         current_time = datetime.now().strftime("%H:%M:%S")
         current_date = datetime.now().strftime("%Y-%m-%d")
         filename = f"{save}_{current_date}_{current_time}.pdf"
-        plt.savefig(filename)
+        plt.savefig(filename, dpi=600)
 
     plt.show()
