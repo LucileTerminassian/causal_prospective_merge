@@ -6,7 +6,7 @@ from outcome_models import *
 from plotting_functions import *
 from mcmc_bayes_update import *
 from eig_comp_utils import *
-
+from scipy.stats import kendalltau, spearmanr
 
 ############################ CLOSED FORM
 
@@ -173,3 +173,78 @@ def bart_eig_from_samples_varying_sample_size(
 
 
 
+def average_precision_at_k(true_rankings, predicted_rankings, k):
+    num_hits = 0
+    sum_precision = 0
+    for i, pred in enumerate(predicted_rankings[:k], 1):
+        if pred in true_rankings:
+            num_hits += 1
+            sum_precision += num_hits / i
+    if not true_rankings:
+        return 0
+    return sum_precision / min(len(true_rankings), k)
+
+def mean_average_precision(true_rankings, predicted_rankings, k=None):
+    if k is None:
+        k = len(true_rankings)
+    avg_precision = np.mean([average_precision_at_k(true_rankings, predicted_rankings, k_) for k_ in range(1, k + 1)])
+    return avg_precision
+
+def precision_at_k(true_rankings, predicted_rankings, k):
+    intersection = set(predicted_rankings[:k]) & set(true_rankings[:k])
+    return len(intersection) / k
+
+def recall_at_k(true_rankings, predicted_rankings, k):
+    intersection = set(predicted_rankings[:k]) & set(true_rankings[:k])
+    return len(intersection) / len(true_rankings)
+
+def mrr(true_rankings, predicted_rankings):
+    for i, pred in enumerate(predicted_rankings, 1):
+        if pred in true_rankings:
+            return 1 / i
+    return 0
+
+def ndcg(true_rankings, predicted_rankings, k=None):
+    if k is None:
+        k = len(true_rankings)
+    dcg = sum(2 ** true_rankings[i] - 1 / np.log2(i + 2) for i in range(k))
+    ideal_rankings = sorted(true_rankings, reverse=True)
+    ideal_dcg = sum(2 ** ideal_rankings[i] - 1 / np.log2(i + 2) for i in range(k))
+    return dcg / ideal_dcg
+
+
+def compare_to_ground_truth(results_dict, true_cate_ranking, eig_ranking, merged_mse, top_n = None, k = None):
+    
+    if top_n is not None:
+        topn_eig_ranking = eig_ranking[:top_n]
+        topn_true_cate_ranking = true_cate_ranking[:top_n]
+        topn_merged_mse = merged_mse[:top_n]
+    else: 
+        topn_eig_ranking, topn_true_cate_ranking,topn_merged_mse = eig_ranking, true_cate_ranking,merged_mse
+
+    if k is None:
+        k = len(true_cate_ranking)
+    
+    implied_ranking = [eig_ranking.index(val) for val in list(range(min(eig_ranking),max(eig_ranking)+1))]
+    
+    results_dict['tau'] = results_dict.get('tau',[])+[(kendalltau(implied_ranking, merged_mse)[0]).item()]    
+    results_dict['rho'] = results_dict.get('rho',[])+[(spearmanr(implied_ranking, merged_mse)[0]).item()]  
+
+    if type(k) == int:
+        results_dict['precision_at_k'] = results_dict.get('precision_at_k',[]) + [precision_at_k(true_cate_ranking, topn_eig_ranking, k=k)]
+    else:
+        for val in k:
+            results_dict['precision_at_'+str(val)] = results_dict.get('precision_at_'+str(val),[]) + [precision_at_k(true_cate_ranking, topn_eig_ranking, k=val)]
+    
+    # results_dict['recall_at_k'].append(recall_at_k(true_cate_ranking, topn_eig_ranking, k=k[0]))
+    # if type(k) == int:
+    #     results_dict['recall_at_k'].append(recall_at_k(true_cate_ranking, topn_eig_ranking, k=k))
+    # else:
+    #     for val in k:
+    #         results_dict['recall_at_'+str(val)].append(recall_at_k(true_cate_ranking, topn_eig_ranking, k=val))
+    # results_dict['mean average precision'].append(mean_average_precision(topn_true_cate_ranking, topn_eig_ranking, k=k[0]))
+    # results_dict['ndcg'].append(ndcg(topn_true_cate_ranking, topn_eig_ranking, k[0]))
+    # results_dict['rank corr eig'].append(np.corrcoef(topn_true_cate_ranking, topn_eig_ranking)[0, 1])
+    # results_dict['mean reciprocal rank'].append(mrr(topn_true_cate_ranking, topn_eig_ranking))
+
+    return results_dict
