@@ -1,8 +1,8 @@
-from typing import Any, Callable
+#from typing import Any, Callable
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder
-from typing import Union
+#from typing import Union
 
 
 def get_data(dataset: str, path: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
@@ -115,9 +115,9 @@ def generate_design_matrix(
 
 def append_outcome(
     data: pd.DataFrame,
-    outcome_function: Callable,
-    noise_scale: Union [float, None] = None,
-    eps: Union [np.ndarray, None] = None,
+    outcome_function, #: Callable
+    noise_scale = None, #: Union [float, None] 
+    eps = None, #Union [np.ndarray, None]
 ) -> pd.DataFrame:
     """
     Generate y = outcome_function(X, T) + N(0, noise_scale)
@@ -146,12 +146,12 @@ def sigmoid(x: np.ndarray) -> np.ndarray:
 
 def subsample_two_complementary_datasets(
     XandT: pd.DataFrame,
-    f_assigned_to_host: Callable,  # ??
+    f_assigned_to_host,  # : Callable
     n_host: int,
     n_complementary: int,
     power_x: int,
     power_x_t: int,
-    outcome_function: Callable,
+    outcome_function, #: Callable
     std_true_y: float,
     include_intercept: bool = True,
     seed: int = 0,
@@ -228,11 +228,11 @@ def subsample_two_complementary_datasets(
 # Function to generate the second candidate dataset
 def subsample_one_dataset(
     XandT: pd.DataFrame,
-    assignment_function: Callable,
+    assignment_function, #: Callable
     sample_size: int,
     power_x: int,
     power_x_t: int,
-    outcome_function: Callable,
+    outcome_function, #: Callable
     std_true_y: float,
     include_intercept: bool = True,
     seed: int = 0,
@@ -267,9 +267,9 @@ def subsample_one_dataset(
 
 
 def generate_data_varying_sample_size(
-    data_parameters: dict[str, Any],
-    X_rct: Union [pd.DataFrame, None] = None,
-    T_rct: Union [np.ndarray, None] = None,
+    data_parameters, #: dict[str, Any]
+    X_rct = None, #Union [pd.DataFrame, None] 
+    T_rct = None, #Union [np.ndarray, None]
     include_intercept: bool = True,
     seed: int=0,
 ) -> dict[int, dict]:
@@ -345,9 +345,9 @@ def generate_data_varying_sample_size(
 
 
 def generate_exact_data_varying_sample_size(
-    data_parameters: dict[str, Any],
-    X_rct: Union [pd.DataFrame, None] = None,
-    T_rct: Union [np.ndarray, None] = None,
+    data_parameters, #: dict[str, Any]
+    X_rct = None, #: Union [pd.DataFrame, None]
+    T_rct = None, # : Union [np.ndarray, None]
     include_intercept: bool = True,
     seed: int=0,
 ) -> dict[int, dict]:

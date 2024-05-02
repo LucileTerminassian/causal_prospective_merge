@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.metrics import r2_score
 import pandas as pd
 from datetime import datetime
-from typing import Union
+# from typing import Union
 
 
 def plot_densities(y1, y2, y3, names, title):
@@ -40,11 +40,11 @@ def plot_dict(
     dict: dict,
     axis_names: list,
     color_dict: dict = None,
-    dict_additional_plots: Union [dict, None] = None,
-    text: Union [str, None] = None,
-    title: Union[str, None] = None,
-    save: Union[str, None] = None,
-    second_axis: Union[dict, None] = None,
+    dict_additional_plots = None, #: Union [dict, None]
+    text = None, #: Union [str, None]
+    title = None, #: Union[str, None]
+    save = None, #: Union[str, None]
+    second_axis = None, #: Union[dict, None]
 ):
 
     fig, ax1 = plt.subplots(figsize=(13, 8))
