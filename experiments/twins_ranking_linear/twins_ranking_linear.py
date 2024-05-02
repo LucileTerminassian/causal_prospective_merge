@@ -90,7 +90,7 @@ direct_path = os.path.join(args['--o'],date_time_str)
 os.makedirs(direct_path, exist_ok=True)
 with open(os.path.join(direct_path, 'cfg.yaml'), 'w') as f:
     yaml.dump(cfg, f)
-dump_path = os.path.join(direct_path, 'results.metrics')
+dump_path = os.path.join(direct_path, 'results.metrics.csv')
 
 def generating_random_sites_from(data, exp_parameters, added_T_coef=1):
     
@@ -225,9 +225,6 @@ with warnings.catch_warnings():
 
         true_cate_ranking = sorted(range(len(merged_mse)), key=lambda i: merged_mse[i], reverse=False) 
 
-        
-
-
 
 
         compare_to_ground_truth(correlation_with_true_rankings, true_cate_ranking, obs_eig_ranking_closed_form, merged_mse=merged_mse, top_n = top_n, k = k)
@@ -236,10 +233,8 @@ with warnings.catch_warnings():
         ### random ranking
         random_ranking = np.random.choice(np.arange(1, number_of_candidate_sites+1), size=number_of_candidate_sites, replace=False)
 
-
         ### ranking by sample size
         sample_size_order = sorted(candidate_sites.keys(), key=lambda key: -candidate_sites[key].shape[0])
-
 
         ### ranking by similarity of covariate distribution
         mean_vector_host = XandT_host.iloc[:,:causal_param_first_index].mean()
@@ -281,7 +276,6 @@ with warnings.catch_warnings():
         compare_to_ground_truth(correlation_with_true_rankings, true_cate_ranking, list(similarity_cov_distrib_ranking),merged_mse=merged_mse, top_n = top_n, k = k)
         compare_to_ground_truth(correlation_with_true_rankings, true_cate_ranking, list(similarity_pscore_ranking),merged_mse=merged_mse, top_n = top_n, k = k)
         correlation_with_true_rankings["Method"] = correlation_with_true_rankings.get("Method",[]) + ['obs_closed_form', 'caus_closed_form', 'random', 'sample size', 'similarity_cov_distrib_ranking', 'similarity_pscore_ranking size']
-
 
         with open(dump_path, 'w') as f:
             yaml.dump(correlation_with_true_rankings, f)
