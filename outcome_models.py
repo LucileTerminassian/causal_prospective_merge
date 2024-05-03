@@ -516,13 +516,22 @@ class CausalGP:
             "output_index": X1[:, X1_shape[1] - 1]
             .reshape((X1_shape[0], 1))
             .astype(int)}
+        noise_dict_0_train = {
+            "output_index": self.X0_train[:, self.X0_train.shape[1] - 1]
+            .reshape((self.X0_train.shape[0], 1))
+            .astype(int)}
+
+        noise_dict_1_train = {
+            "output_index": self.X1_train[:, self.X1_train.shape[1] - 1]
+            .reshape((self.X1_train.shape[0], 1))
+            .astype(int)}
         
         Sigma_1 = np.block(
             [[self.model.model.posterior_covariance_between_points(X0,X0,Y_metadata=noise_dict_0), self.model.model.posterior_covariance_between_points(X0,X1,include_likelihood=False) ],
             [self.model.model.posterior_covariance_between_points(X1,X0,include_likelihood=False), self.model.model.posterior_covariance_between_points(X1,X1,Y_metadata=noise_dict_1) ]]
         )
 
-        Sigma_2 = self.model.model.posterior_covariance_between_points(self.X0_train,self.X0_train,include_likelihood=False)+self.model.model.posterior_covariance_between_points(self.X1_train,self.X1_train,include_likelihood=False)-2*self.model.model.posterior_covariance_between_points(self.X0_train,self.X1_train,include_likelihood=False)
+        Sigma_2 = self.model.model.posterior_covariance_between_points(self.X0_train,self.X0_train,Y_metadata=noise_dict_0_train)+self.model.model.posterior_covariance_between_points(self.X1_train,self.X1_train,Y_metadata=noise_dict_1_train)-2*self.model.model.posterior_covariance_between_points(self.X0_train,self.X1_train,include_likelihood=False)
 
         Sigma_join = np.concatenate([
             self.model.model.posterior_covariance_between_points(self.X1_train,X0,include_likelihood=False)-self.model.model.posterior_covariance_between_points(self.X1_train,X0,include_likelihood=False),
@@ -535,6 +544,8 @@ class CausalGP:
         ]
 
         )
+
+        
     
 
         sign, logdet1 = np.linalg.slogdet(Sigma_1)

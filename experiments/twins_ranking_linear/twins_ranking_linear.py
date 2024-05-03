@@ -133,9 +133,10 @@ def generating_random_sites_from(data, exp_parameters, added_T_coef=1):
         any_nan = design_data_cand.isna().any().any()
         if not design_data_cand.empty and not any_nan: # we're appending
             candidates[created_sites] = design_data_cand
+            created_sites += 1
         else:
             number_of_candidate_sites+=1 # not appending
-        created_sites += 1
+            
 
     return candidates
 
