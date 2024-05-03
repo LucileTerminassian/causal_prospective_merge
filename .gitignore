@@ -127,4 +127,5 @@ dmypy.json
 .DS_Store
 
 *results*
+*yaml*
 .vscode
