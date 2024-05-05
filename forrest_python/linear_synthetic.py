@@ -93,7 +93,7 @@ prior_hyperparameters = {
     "inv_cov_0": inv_cov_0,
 }
 
-n_seeds = 2
+n_seeds = 50
 data_parameters = {
     "fixed_n_complementary": fixed_n_complementary,
     "varying_sample_sizes": varying_sample_sizes,
