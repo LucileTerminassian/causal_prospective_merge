@@ -146,11 +146,11 @@ print('computed closed form')
 EIG_obs_closed_form_across_seeds = np.vstack(EIG_obs_closed_form_across_seeds)  
 EIG_caus_closed_form_across_seeds = np.vstack(EIG_caus_closed_form_across_seeds)
 
-predictive_closed_form = turn_into_diff(EIG_obs_closed_form_across_seeds)
-caus_closed_form = turn_into_diff(EIG_caus_closed_form_across_seeds)
+predictive_closed_form = pd.DataFrame(turn_into_diff(EIG_obs_closed_form_across_seeds))
+caus_closed_form = pd.DataFrame(turn_into_diff(EIG_caus_closed_form_across_seeds))
 
-predictive_closed_form.to_csv("/home/ma/l/ltt19/code_causal_eig/data_results/predictive_closed_form.csv")
-caus_closed_form.to_csv("/home/ma/l/ltt19/code_causal_eig/data_results/caus_closed_form.csv")
+predictive_closed_form.to_csv("/home/ma/l/ltt19/code_causal_eig/data_results/predictive_closed_form.csv",mode='w+')
+caus_closed_form.to_csv("/home/ma/l/ltt19/code_causal_eig/data_results/caus_closed_form.csv",mode='w+')
 
 print('saved closed form')
 
@@ -186,11 +186,11 @@ EIG_caus_samples_across_seeds = np.vstack(EIG_caus_samples_across_seeds)
 
 print('computed mcmc samples')
 
-predictive_mcmc = turn_into_diff(EIG_obs_samples_across_seeds)
-caus_mcmc = turn_into_diff(EIG_caus_samples_across_seeds)
+predictive_mcmc = pd.DataFrame(turn_into_diff(EIG_obs_samples_across_seeds))
+caus_mcmc = pd.DataFrame(turn_into_diff(EIG_caus_samples_across_seeds))
 
-predictive_mcmc.to_csv("/home/ma/l/ltt19/code_causal_eig/data_results/predictive_mcmc.csv")
-caus_mcmc.to_csv("/home/ma/l/ltt19/code_causal_eig/data_results/caus_mcmc.csv")
+predictive_mcmc.to_csv("/home/ma/l/ltt19/code_causal_eig/data_results/predictive_mcmc.csv",mode='w+')
+caus_mcmc.to_csv("/home/ma/l/ltt19/code_causal_eig/data_results/caus_mcmc.csv",mode='w+')
 
 print('saved mcmc samples')
 
@@ -279,7 +279,7 @@ def plot_dict(
         current_time = datetime.now().strftime("%H:%M:%S")
         current_date = datetime.now().strftime("%Y-%m-%d")
         filename = f"{save}_{current_date}_{current_time}.pdf"
-        plt.savefig(filename, dpi=600)
+        plt.savefig(filename, dpi=800)
 
     plt.show()
 
