@@ -111,6 +111,16 @@ data_parameters = {
 
 print('hyperparameters done')
 
+def turn_into_diff(arr):
+    n, d = np.shape(arr)[0], np.shape(arr)[1]
+    result = np.zeros((n//2, d))
+    for i in range (n//2):
+        result[i,:]=arr[2*i,:]-arr[(2*i) +1,:]
+    return result
+
+proportions = np.array(varying_sample_sizes)/fixed_n_complementary
+proportions
+
 EIG_obs_closed_form_across_seeds, EIG_caus_closed_form_across_seeds = [], []
 store_non_exact_data = {}
 
@@ -144,15 +154,6 @@ caus_closed_form.to_csv("/home/ma/l/ltt19/code_causal_eig/data_results/caus_clos
 
 print('saved closed form')
 
-def turn_into_diff(arr):
-    n, d = np.shape(arr)[0], np.shape(arr)[1]
-    result = np.zeros((n//2, d))
-    for i in range (n//2):
-        result[i,:]=arr[2*i,:]-arr[(2*i) +1,:]
-    return result
-
-proportions = np.array(varying_sample_sizes)/fixed_n_complementary
-proportions
 
 n_samples_outer_expectation_obs = 400
 n_samples_inner_expectation_obs = 800
