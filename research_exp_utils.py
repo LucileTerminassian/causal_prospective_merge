@@ -13,8 +13,8 @@ from scipy.stats import kendalltau, spearmanr
 
 def linear_eig_closed_form_varying_sample_size(
     data: dict[int, dict],
-    data_parameters: dict[str, Any],
-    prior_hyperparameters: dict[str, Any],  # passed to BayesianLinearRegression
+    data_parameters: dict[str],
+    prior_hyperparameters: dict[str],  # passed to BayesianLinearRegression
     verbose: bool = True,
 ):
     # this now works with both exact and "non-exact" `data`
@@ -55,8 +55,8 @@ def linear_eig_closed_form_varying_sample_size(
 
 def linear_eig_from_samples_varying_sample_size(
     data: dict[int, dict],
-    data_parameters: dict[str, Any],
-    prior_hyperparameters: dict[str, Any],
+    data_parameters: dict[str],
+    prior_hyperparameters: dict[str],
     sampling_parameters: dict[str, int],    
     verbose: bool = False,
 ):
@@ -110,8 +110,8 @@ def linear_eig_from_samples_varying_sample_size(
 def bart_eig_from_samples_varying_sample_size(
     
     data: dict[int, dict],
-    data_parameters: dict[str, Any],
-    prior_hyperparameters: dict[str, Any],
+    data_parameters: dict[str],
+    prior_hyperparameters: dict[str],
     predictive_model_parameters: dict[str, int],
     conditional_model_param: dict[str, int],
     sampling_parameters: dict[str, int],
