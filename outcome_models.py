@@ -448,6 +448,7 @@ class CausalGP:
         self.model = None
 
     def fit(self,X_train,T_train,Y_train):
+
         self.model = CMGP(X_train, T_train, Y_train, max_gp_iterations = self.max_gp_iterations)
 
         self.X0_train =  np.array(
@@ -494,7 +495,18 @@ class CausalGP:
         sign, logdet = np.linalg.slogdet(Sigma_1)
         return 0.5*(logdet - n_0 * np.log(self.model.model.likelihood[0]) - n_1 * np.log(self.model.model.likelihood[1]))
     
-    def causal_EIG_closed_form(self,X,T):
+    def causal_EIG_closed_form(self,X,T,holdout_X = None):
+
+        if holdout_X is None:
+            holdout_X0 = self.X0_train
+            holdout_X1 = self.X1_train
+        
+        else:
+            holdout_X,holdout_T = holdout_X
+
+            holdout_X0 = np.array(np.hstack([holdout_X, np.zeros_like(holdout_X[:, 1].reshape((len(holdout_X[:, 1]), 1)))]))
+            holdout_X1 = np.hstack([holdout_X, np.ones_like(holdout_X[:, 1].reshape((len(holdout_X[:, 1]), 1)))])
+            
         
         X0 = X[T==0]
         X0 = np.array(
@@ -502,28 +514,30 @@ class CausalGP:
             )
         X1 = X[T==1]
         X1 = np.array(
-    
-    np.hstack([X1, np.ones_like(X1[:, 1].reshape((len(X1[:, 1]), 1)))])
+            np.hstack([X1, np.ones_like(X1[:, 1].reshape((len(X1[:, 1]), 1)))])
             )
         
         X0_shape = X0.shape
         X1_shape = X1.shape
+
         noise_dict_0 = {
             "output_index": X0[:, X0_shape[1] - 1]
             .reshape((X0_shape[0], 1))
             .astype(int)}
+        
         noise_dict_1 = {
             "output_index": X1[:, X1_shape[1] - 1]
             .reshape((X1_shape[0], 1))
             .astype(int)}
+        
         noise_dict_0_train = {
-            "output_index": self.X0_train[:, self.X0_train.shape[1] - 1]
-            .reshape((self.X0_train.shape[0], 1))
+            "output_index": holdout_X0[:, holdout_X0.shape[1] - 1]
+            .reshape((holdout_X0.shape[0], 1))
             .astype(int)}
 
         noise_dict_1_train = {
-            "output_index": self.X1_train[:, self.X1_train.shape[1] - 1]
-            .reshape((self.X1_train.shape[0], 1))
+            "output_index": holdout_X1[:, holdout_X1.shape[1] - 1]
+            .reshape((holdout_X1.shape[0], 1))
             .astype(int)}
         
         Sigma_1 = np.block(
@@ -531,11 +545,11 @@ class CausalGP:
             [self.model.model.posterior_covariance_between_points(X1,X0,include_likelihood=False), self.model.model.posterior_covariance_between_points(X1,X1,Y_metadata=noise_dict_1) ]]
         )
 
-        Sigma_2 = self.model.model.posterior_covariance_between_points(self.X0_train,self.X0_train,Y_metadata=noise_dict_0_train)+self.model.model.posterior_covariance_between_points(self.X1_train,self.X1_train,Y_metadata=noise_dict_1_train)-2*self.model.model.posterior_covariance_between_points(self.X0_train,self.X1_train,include_likelihood=False)
+        Sigma_2 = self.model.model.posterior_covariance_between_points(holdout_X0,holdout_X0,Y_metadata=noise_dict_0_train)+self.model.model.posterior_covariance_between_points(holdout_X1,holdout_X1,Y_metadata=noise_dict_1_train)-2*self.model.model.posterior_covariance_between_points(holdout_X0,holdout_X1,include_likelihood=False)
 
         Sigma_join = np.concatenate([
-            self.model.model.posterior_covariance_between_points(self.X1_train,X0,include_likelihood=False)-self.model.model.posterior_covariance_between_points(self.X1_train,X0,include_likelihood=False),
-            self.model.model.posterior_covariance_between_points(self.X1_train,X1,include_likelihood=False)-self.model.model.posterior_covariance_between_points(self.X1_train,X1,include_likelihood=False)
+            self.model.model.posterior_covariance_between_points(holdout_X1,X0,include_likelihood=False)-self.model.model.posterior_covariance_between_points(holdout_X0,X0,include_likelihood=False),
+            self.model.model.posterior_covariance_between_points(holdout_X1,X1,include_likelihood=False)-self.model.model.posterior_covariance_between_points(holdout_X0,X1,include_likelihood=False)
                                      ],axis=1)
         
         Sigma = np.block([
@@ -544,8 +558,6 @@ class CausalGP:
         ]
 
         )
-
-        
     
 
         sign, logdet1 = np.linalg.slogdet(Sigma_1)
