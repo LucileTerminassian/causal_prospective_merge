@@ -22,7 +22,7 @@ from cmgp import CMGP
 
 
 def posterior_mean(X, y, sigma_sq, cov_posterior_inv):
-    return 1 / sigma_sq * cov_posterior_inv @ (X.T @ y)
+    return 1 / sigma_sq * cov_posterior_inv @ ((X.T) @ y.double())
 
 
 def posterior_covariance_inv(X, sigma_sq, S0_inv):

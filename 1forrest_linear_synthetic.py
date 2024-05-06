@@ -5,6 +5,8 @@ import torch
 torch.set_default_tensor_type(torch.FloatTensor)
 import sys
 import os, random
+from multiprocessing import Pool
+import itertools
 
 notebook_dir = os.getcwd()
 parent_dir = os.path.dirname(notebook_dir)
@@ -50,15 +52,15 @@ d = (
     + len(x_distributions) * (power_x_t)
 )
 
+
+causal_param_first_index = power_x*len(x_distributions) + include_intercept 
+
 p_assigned_to_host = lambda X, T, eps: sigmoid(
     1 + 2 * X["X_0"] - X["X_1"] + 2 * T + eps
 )
 p_assigned_to_cand2 = lambda X, T, eps: sigmoid(
     1 + 2 * X["X_0"] - X["X_1"] + 2 * T + eps
 )
-
-
-causal_param_first_index = power_x*len(x_distributions) + include_intercept 
 
 outcome_function = (
     # y = 1 + 1*X_0 - 1*X_1 + 1*X_2 + 4*T + 2*X_0*T + 2*X_1*T + 0*X_2*T + eps
@@ -127,7 +129,8 @@ store_non_exact_data = {}
 for i in range(n_seeds):
     nonexact_data = generate_data_varying_sample_size(
         data_parameters, include_intercept=bool(include_intercept), seed=i)
-    EIGs = linear_eig_closed_form_varying_sample_size(  # CHECK what this does
+    
+    EIGs = linear_eig_closed_form_varying_sample_size(  
         nonexact_data,
         data_parameters,
         prior_hyperparameters,
@@ -141,6 +144,7 @@ for i in range(n_seeds):
     )
     store_non_exact_data[i] = nonexact_data
 
+
 print('computed closed form')
 
 EIG_obs_closed_form_across_seeds = np.vstack(EIG_obs_closed_form_across_seeds)  
@@ -149,8 +153,8 @@ EIG_caus_closed_form_across_seeds = np.vstack(EIG_caus_closed_form_across_seeds)
 predictive_closed_form = pd.DataFrame(turn_into_diff(EIG_obs_closed_form_across_seeds))
 caus_closed_form = pd.DataFrame(turn_into_diff(EIG_caus_closed_form_across_seeds))
 
-predictive_closed_form.to_csv("/home/ma/l/ltt19/code_causal_eig/data_results/predictive_closed_form.csv",mode='w+')
-caus_closed_form.to_csv("/home/ma/l/ltt19/code_causal_eig/data_results/caus_closed_form.csv",mode='w+')
+predictive_closed_form.to_csv("/home/ma/l/ltt19/code_causal_eig/data_results/predictive_closed_form1.csv",mode='w+')
+caus_closed_form.to_csv("/home/ma/l/ltt19/code_causal_eig/data_results/caus_closed_form1.csv",mode='w+')
 
 print('saved closed form')
 
@@ -169,7 +173,8 @@ sampling_parameters = {
 
 EIG_obs_samples_across_seeds, EIG_caus_samples_across_seeds = [], []
 
-for i in range(n_seeds):
+
+for i in range(10, 20):
     EIGs = linear_eig_from_samples_varying_sample_size(
         store_non_exact_data[i], data_parameters, prior_hyperparameters, sampling_parameters
     )
@@ -211,11 +216,11 @@ def plot_dict(
     axis_names: list,
     mean_color_dict: dict = None,
     std_color_dict: dict = None,
-    dict_additional_plots: Union [dict, None] = None,
-    text: Union [str, None] = None,
-    title: Union[str, None] = None,
-    save: Union[str, None] = None,
-    second_axis: Union[dict, None] = None,
+    dict_additional_plots = None,
+    text = None,
+    title = None,
+    save = None,
+    second_axis = None,
 ):
 
     fig, ax1 = plt.subplots(figsize=(13, 10))
