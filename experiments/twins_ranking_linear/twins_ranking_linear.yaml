@@ -5,11 +5,11 @@
 
 # Experiment_parameters
 
-num_repeats: 5
-number_of_candidate_sites : 10
+num_repeats: 100
+number_of_candidate_sites : 40
 
-min_sample_size_cand : 200
-max_sample_size_cand : 300
+min_sample_size_cand : 300
+max_sample_size_cand : 500
 host_sample_size : 400 
 desired_initial_sample_size : 1.e+4
 
@@ -23,6 +23,6 @@ power_x_t : 1
 sigma_rand_error : 1
 true_beta_great_0_prop : 0.8
 
-k : [1,3,5]
+k : [1,5,10,20]
 top_n : null
 
