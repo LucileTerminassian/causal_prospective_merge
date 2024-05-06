@@ -194,8 +194,8 @@ print('computed mcmc samples')
 predictive_mcmc = pd.DataFrame(turn_into_diff(EIG_obs_samples_across_seeds))
 caus_mcmc = pd.DataFrame(turn_into_diff(EIG_caus_samples_across_seeds))
 
-predictive_mcmc.to_csv("/home/ma/l/ltt19/code_causal_eig/data_results/predictive_mcmc.csv",mode='w+')
-caus_mcmc.to_csv("/home/ma/l/ltt19/code_causal_eig/data_results/caus_mcmc.csv",mode='w+')
+predictive_mcmc.to_csv("/home/ma/l/ltt19/code_causal_eig/data_results/predictive_mcmc1.csv",mode='w+')
+caus_mcmc.to_csv("/home/ma/l/ltt19/code_causal_eig/data_results/caus_mcmc1.csv",mode='w+')
 
 print('saved mcmc samples')
 
