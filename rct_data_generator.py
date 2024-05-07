@@ -1,12 +1,11 @@
-#from typing import Any, Callable
+from typing import Any, Callable
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder
-#from typing import Union
+from typing import Union, List
 
 
-def get_data(dataset: str, path: str) : 
-    #-> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]
+def get_data(dataset: str, path: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
     """
     Get the data for the specified dataset.
 
