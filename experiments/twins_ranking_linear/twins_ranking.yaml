@@ -6,14 +6,14 @@
 # Experiment_parameters
 
 num_repeats: 100
-number_of_candidate_sites : 10
+number_of_candidate_sites : 30
 
 min_sample_size_cand : 300
 max_sample_size_cand : 500
 host_sample_size : 400 
 desired_initial_sample_size : 1.e+4
 
-added_T_coef : 0 # to increase importance of T
+added_T_coef : 40 # to increase importance of T
 
 outcome_function : null
 

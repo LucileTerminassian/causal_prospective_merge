@@ -289,7 +289,6 @@ with warnings.catch_warnings():
                     merged_mse_models["lin"] = merged_mse_models.get("lin",[]) + [(mean_squared_error(true_cate, pred_cate))]
                     
                 if cfg["model_param"]["GP"]["run"]:
-                    merged_mse_models["GP"] = []
                     
                     X_host_test = host_test.drop(columns=["Y","T"]).iloc[:,:causal_param_first_index].values
                     
