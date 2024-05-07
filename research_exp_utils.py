@@ -101,8 +101,11 @@ def linear_eig_from_samples_varying_sample_size(
 
             EIG_obs[cand].append(bayes_reg.samples_obs_EIG(
                 X_cand, n_samples_outer_expectation_obs, n_samples_inner_expectation_obs))
+            
+            print("obs done")
             EIG_caus[cand].append(bayes_reg.samples_causal_EIG(
                 X_cand, n_samples_outer_expectation_caus, n_samples_inner_expectation_caus))
+            print("caus done")
 
     return EIG_obs, EIG_caus
 

@@ -42,6 +42,8 @@ class BayesianLinearRegression:
             self.cov = torch.inverse(self.inv_cov)
         else:
             self.cov = np.linalg.inv(self.inv_cov)
+        
+
 
     def _check_prior_hyperparameters(self):
 
@@ -173,12 +175,17 @@ class BayesianLinearRegression:
     def samples_obs_EIG(
         self, X, n_samples_outer_expectation, n_samples_inner_expectation
     ):
-        n_samples = n_samples_outer_expectation * (n_samples_inner_expectation + 1)
-        posterior_samples = self.posterior_sample(n_samples=n_samples)
-        predicitions = posterior_samples @ X.T
+        if not hasattr(self,"posterior_samples"): 
+            n_samples = n_samples_outer_expectation * (n_samples_inner_expectation + 1)
+            self.posterior_samples = self.posterior_sample(n_samples=n_samples)
+            print("sampling done")
+        
+        predicitions = self.posterior_samples @ X.T
+        print("predicted")
         predictions_in_form = predictions_in_EIG_obs_form(
             predicitions, n_samples_outer_expectation, n_samples_inner_expectation
         )
+        print("predictions in form")
         return compute_EIG_obs_from_samples(
             predictions_in_form, self.sigma_0_sq ** (1 / 2)
         )
@@ -186,9 +193,16 @@ class BayesianLinearRegression:
     def samples_causal_EIG(
         self, X, n_samples_outer_expectation, n_samples_inner_expectation
     ):
+        
         sample_func = self.return_conditional_sample_function(self.causal_index)
-        posterior_samples = self.posterior_sample(n_samples=n_samples_outer_expectation)
+        
+        if not hasattr(self,"posterior_samples"):
+            posterior_samples = self.posterior_sample(n_samples=n_samples_outer_expectation)
+        else: 
+            posterior_samples = self.posterior_samples[:n_samples_outer_expectation]
+
         prediction_func = lambda beta: beta @ (X).T
+        
         predictions_paired = predictions_in_EIG_causal_form(
             pred_func=prediction_func,
             theta_samples=posterior_samples,
@@ -196,7 +210,7 @@ class BayesianLinearRegression:
             n_non_causal_expectation=n_samples_inner_expectation,
             causal_param_first_index=self.causal_index,
         )
-
+        print("conditional_sample_done")
         n_samples = n_samples_outer_expectation * (n_samples_inner_expectation + 1)
         posterior_samples = self.posterior_sample(n_samples=n_samples)
         predicitions = posterior_samples @ X.T
@@ -285,7 +299,7 @@ class BayesianCausalForest:
         tau_adj = predictions[0] * (b_adj.T[T])
 
         if return_tau:
-            return (tau_adj + predictions[1]).T, tau_adj.T
+            return (tau_adj + predictions[1]).T, predictions[0].T
         else:
             return (tau_adj + predictions[1]).T
 
