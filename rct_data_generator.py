@@ -5,7 +5,7 @@ from sklearn.preprocessing import OneHotEncoder
 #from typing import Union
 
 
-def get_data(dataset: str, path: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+def get_data(dataset: str, path: str) : #-> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]
     """
     Get the data for the specified dataset.
 
