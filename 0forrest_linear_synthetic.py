@@ -159,10 +159,10 @@ caus_closed_form.to_csv("/home/ma/l/ltt19/code_causal_eig/data_results/caus_clos
 print('saved closed form')
 
 
-n_samples_outer_expectation_obs = 400
-n_samples_inner_expectation_obs = 800
-n_samples_outer_expectation_caus = 400
-n_samples_inner_expectation_caus = 800
+n_samples_outer_expectation_obs = 300
+n_samples_inner_expectation_obs = 600
+n_samples_outer_expectation_caus = 300
+n_samples_inner_expectation_caus = 600
 
 sampling_parameters = {
     "n_samples_inner_expectation_obs": n_samples_inner_expectation_obs,
@@ -175,6 +175,7 @@ EIG_obs_samples_across_seeds, EIG_caus_samples_across_seeds = [], []
 
 
 for i in range(10):
+    print(i)
     EIGs = linear_eig_from_samples_varying_sample_size(
         store_non_exact_data[i], data_parameters, prior_hyperparameters, sampling_parameters
     )

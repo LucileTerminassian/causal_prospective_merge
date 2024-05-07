@@ -153,8 +153,8 @@ EIG_caus_closed_form_across_seeds = np.vstack(EIG_caus_closed_form_across_seeds)
 predictive_closed_form = pd.DataFrame(turn_into_diff(EIG_obs_closed_form_across_seeds))
 caus_closed_form = pd.DataFrame(turn_into_diff(EIG_caus_closed_form_across_seeds))
 
-predictive_closed_form.to_csv("/home/ma/l/ltt19/code_causal_eig/data_results/predictive_closed_form1.csv",mode='w+')
-caus_closed_form.to_csv("/home/ma/l/ltt19/code_causal_eig/data_results/caus_closed_form1.csv",mode='w+')
+predictive_closed_form.to_csv("/home/ma/l/ltt19/code_causal_eig/data_results/predictive_closed_form.csv",mode='w+')
+caus_closed_form.to_csv("/home/ma/l/ltt19/code_causal_eig/data_results/caus_closed_form.csv",mode='w+')
 
 print('saved closed form')
 
