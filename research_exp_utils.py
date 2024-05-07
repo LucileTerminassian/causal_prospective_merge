@@ -79,6 +79,7 @@ def linear_eig_from_samples_varying_sample_size(
     EIG_caus = {name: [] for name in candidates_names}
 
     for length in sample_sizes:
+        print('length is '+str(length))
         dlen = data[length]  # for convenience
         bayes_reg = BayesianLinearRegression(prior_hyperparameters)
         bayes_reg.set_causal_index(data_parameters["causal_param_first_index"])
@@ -95,6 +96,7 @@ def linear_eig_from_samples_varying_sample_size(
             print(f" % treated in host: {int(100 * dlen['host']['T'].mean())}%")
 
         for cand in candidates_names:
+            print('cand is '+str(cand))
             X_cand = torch.from_numpy(dlen[cand].drop(columns=["Y"]).values)
             if verbose:
                 print(f" % treated in {cand}: {int(100 * dlen[cand]['T'].mean())}%")

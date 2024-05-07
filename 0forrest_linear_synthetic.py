@@ -174,7 +174,7 @@ sampling_parameters = {
 EIG_obs_samples_across_seeds, EIG_caus_samples_across_seeds = [], []
 
 
-for i in range(10):
+for i in range(25):
     print(i)
     EIGs = linear_eig_from_samples_varying_sample_size(
         store_non_exact_data[i], data_parameters, prior_hyperparameters, sampling_parameters
@@ -195,8 +195,8 @@ print('computed mcmc samples')
 predictive_mcmc = pd.DataFrame(turn_into_diff(EIG_obs_samples_across_seeds))
 caus_mcmc = pd.DataFrame(turn_into_diff(EIG_caus_samples_across_seeds))
 
-predictive_mcmc.to_csv("/home/ma/l/ltt19/code_causal_eig/data_results/predictive_mcmc0.csv",mode='w+')
-caus_mcmc.to_csv("/home/ma/l/ltt19/code_causal_eig/data_results/caus_mcmc0.csv",mode='w+')
+predictive_mcmc.to_csv("/home/ma/l/ltt19/code_causal_eig/data_results/predictive_mcmc.csv",mode='w+')
+caus_mcmc.to_csv("/home/ma/l/ltt19/code_causal_eig/data_results/caus_mcmc.csv",mode='w+')
 
 print('saved mcmc samples')
 

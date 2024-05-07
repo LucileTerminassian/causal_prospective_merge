@@ -180,10 +180,10 @@ class BayesianLinearRegression:
             self.posterior_samples = self.posterior_sample(n_samples=n_samples)
             print("sampling done")
         
-        predicitions = self.posterior_samples @ X.T
+        predictions = self.posterior_samples @ X.T
         print("predicted")
         predictions_in_form = predictions_in_EIG_obs_form(
-            predicitions, n_samples_outer_expectation, n_samples_inner_expectation
+            predictions, n_samples_outer_expectation, n_samples_inner_expectation
         )
         print("predictions in form")
         return compute_EIG_obs_from_samples(
