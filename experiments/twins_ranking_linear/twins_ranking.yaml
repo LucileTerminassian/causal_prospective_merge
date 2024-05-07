@@ -1,0 +1,80 @@
+################################################################################
+#   Twins ranking linear config
+# Run python twins_ranking.py --cfg=twins_ranking.yaml --o=results/
+################################################################################
+
+# Experiment_parameters
+
+num_repeats: 100
+number_of_candidate_sites : 10
+
+min_sample_size_cand : 300
+max_sample_size_cand : 500
+host_sample_size : 400 
+desired_initial_sample_size : 1.e+4
+
+added_T_coef : 0 # to increase importance of T
+
+outcome_function : null
+
+true_beta_great_0_prop : 0.8
+
+std_true_y : 1
+
+model_param:
+
+  Linear:
+    run: True
+    power_x : 1
+    power_x_t : 1
+    sigma_rand_error : 1
+  
+  GP:
+    run: True
+  
+  BART:
+    run: False
+
+    prior_hyperparameters:
+      sigma_0_sq : 1
+      p_categorical_pr: 0
+      p_categorical_trt : 0
+
+    predictive_model_parameters:
+      parallel : True 
+      burnin : 15 
+      max_depth : 250 
+      num_trees_pr : 200
+      num_trees_trt : 200
+      num_cutpoints : 100 
+      Nmin : 1 
+      tau_pr  : 0.6  #0.6 * np.var(y) / /NUM_TREES_PR 
+      tau_trt  : 0.1   #0.1 * np.var(y) / /NUM_TREES_TRT 
+      alpha_pr : 0.95  # shrinkage (splitting probability)
+      beta_pr  : 2  # shrinkage (tree depth)
+      alpha_trt  : 0.95  # shrinkage for treatment part
+      beta_trt  : 2 
+      standardize_target  : True 
+      parallel : True
+    
+    conditional_model_param:
+      parallel : True 
+      burnin : 15 
+      max_depth : 250 
+      num_trees_pr : 200
+      num_trees_trt : 200
+      num_cutpoints : 100 
+      Nmin : 1 
+      tau_pr  : 0.6  #0.6 * np.var(y) / /NUM_TREES_PR 
+      tau_trt  : 0.1   #0.1 * np.var(y) / /NUM_TREES_TRT 
+      alpha_pr : 0.95  # shrinkage (splitting probability)
+      beta_pr  : 2  # shrinkage (tree depth)
+      alpha_trt  : 0.95  # shrinkage for treatment part
+      beta_trt  : 2 
+      standardize_target  : True 
+      parallel : True
+    
+
+k : [1 ,5 , 10 , 20]
+top_n : null
+
