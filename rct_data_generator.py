@@ -4,6 +4,59 @@ import pandas as pd
 from sklearn.preprocessing import OneHotEncoder
 from typing import Union, List
 
+def generating_random_sites_from(data, exp_parameters, added_T_coef=1):
+    
+    candidates = {}
+    sample_size, number_covariates = np.shape(data)[0], np.shape(data)[1]
+    function_indices = {0: lambda X: np.log(X+1), 1: lambda X: X**3, 2: lambda X: X, 3: lambda X: X**2 }
+    number_of_candidate_sites = exp_parameters['number_of_candidate_sites']
+    min_sample_size_cand = exp_parameters['min_sample_size_cand']
+    max_sample_size_cand = exp_parameters['max_sample_size_cand']
+    outcome_function = None
+    std_true_y = exp_parameters['std_true_y']
+    power_x = exp_parameters['power_x']
+    power_x_t = exp_parameters['power_x_t']
+    number_features = number_covariates
+    created_sites = 0
+    
+    while created_sites < number_of_candidate_sites:
+
+        np.random.seed(np.random.randint(10000))
+        
+        selected_features_for_subsampling = np.random.randint(2, size = number_features) 
+        # binary bool vector representing selection for being an input of the sampling function
+        random_coefs = [np.random.uniform(-10, 10) for _ in range(number_features)] 
+        random_fct_idx = [np.random.randint(0, len(function_indices.keys())) for _ in range(number_features)] 
+        
+        def p_assigned_to_site(X, T, eps):
+            result = 0
+            for j in range(number_features-1):
+                result += selected_features_for_subsampling[j] * random_coefs[j] * function_indices[random_fct_idx[j]](X[j])
+            # here i use added_T_coef * random_coefs to increase importance of T
+            result +=  added_T_coef * random_coefs[-1] *  function_indices[random_fct_idx[-1]](T) #selected_features_for_subsampling[-1]
+            return sigmoid(result + eps)
+        
+        sample_size = np.random.randint(min_sample_size_cand, max_sample_size_cand + 1)  # Add 1 to include max_sample_size_cand
+
+        if created_sites==0:
+            sample_size = exp_parameters['host_sample_size']+ 2000
+        design_data_cand = subsample_one_dataset(XandT, p_assigned_to_site, sample_size, power_x, power_x_t, outcome_function, std_true_y, seed=np.random.randint(10000))
+        design_data_cand = design_data_cand.dropna()
+        any_nan = design_data_cand.isna().any().any()
+        if not design_data_cand.empty and not any_nan: # we're appending
+            if created_sites==0:
+                if (design_data_cand["T"].mean() == 0 or design_data_cand["T"].mean() == 1): 
+                    pass
+                else:
+                    candidates[created_sites] = design_data_cand
+                    created_sites += 1
+            else:
+                candidates[created_sites] = design_data_cand
+                created_sites += 1
+        else:
+            pass # not appending
+            
+    return candidates
 
 def get_data(dataset: str, path: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
     """
