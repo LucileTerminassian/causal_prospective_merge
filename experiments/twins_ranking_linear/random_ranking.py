@@ -92,7 +92,7 @@ direct_path = os.path.join(args['--o'],date_time_str)
 os.makedirs(direct_path, exist_ok=True)
 with open(os.path.join(direct_path, 'cfg.yaml'), 'w') as f:
     yaml.dump(cfg, f)
-dump_path = os.path.join(direct_path, 'results.metrics.csv')
+dump_path = os.path.join(direct_path, 'results.metrics')
 
 
 
@@ -415,3 +415,6 @@ with warnings.catch_warnings():
                 yaml.dump(correlation_with_true_rankings, f)
         # except:
         #     print("Error, skipping to next")
+                
+results_df = pd.DataFrame(correlation_with_true_rankings)
+results_df.to_csv(os.path.join(direct_path, 'full_results.csv'))
