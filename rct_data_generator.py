@@ -3,11 +3,76 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder
 from typing import Union, List
+from causallib import datasets
 
-def generating_random_sites_from(data, exp_parameters, added_T_coef=1):
+
+def get_data(dataset: str, path: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+    """
+    Get the data for the specified dataset.
+
+    Args:
+        dataset: name of the dataset load.
+            Currently, the options are 'twins' and 'acic'.
+
+    Returns:
+        tuple[pd.DataFrame, pd.DataFrame, np.ndarray, np.ndarray]: data, covariates, treatment assignment, and outcomes
+    """
+
+    if dataset == 'acic':
+        data = datasets.data_loader.load_acic16()
+        del data['descriptors'] 
+        ground_truth = data['po'].rename(columns={'0': 'y0', '1': 'y1'})
+        x = data['X']
+
+        # selected_columns = x.filter(regex='^x_(2|21|24)')
+        # one_hot = OneHotEncoder(drop="first").fit(selected_columns)
+        # new_data = pd.DataFrame(
+        #     one_hot.transform(selected_columns).toarray(),  # type: ignore
+        # )
+        columns_to_drop = x.filter(regex='^x_(2|21|24)').columns
+        x = x.drop(columns=columns_to_drop)
+        
+        # x = pd.concat([x, new_data], axis=1)
+        data = pd.concat([x, data['a'], data['y'], ground_truth], axis=1)
+        data.dropna(inplace=True)
+        data.rename(columns={'a': 'T', 0: 'Y'}, inplace=True)
+        x = data.drop(columns=["y0", "y1", "Y", "T"])
+        t = data['T']
+        y = data['Y']
+
+    elif dataset == "twins":
+        data = pd.read_csv(path + "data/twins_ztwins_sample0.csv")
+        data.dropna(inplace=True)
+        data.rename(columns={'t': 'T', 'y': 'Y'}, inplace=True)
+        x = data.drop(columns=["y0", "y1", "ite", "Y", "T"])
+        t = data["T"]
+        y = data["Y"]
+
+    # elif dataset == "acic":
+    #     data = pd.read_csv(path + "data/acic_zymu_174570858.csv")
+    #     x = pd.read_csv(path + "data/acic_x.csv")
+    #     t = data["z"]
+    #     y = data["y0"]
+    #     idx_to_change = data.loc[data["z"] == 1].index.to_list()
+    #     for idx in idx_to_change:
+    #         y.loc[idx] = data["y1"].loc[idx]
+    #     y = y.rename("y")
+    #     one_hot = OneHotEncoder(drop="first").fit(x[["x_2", "x_21", "x_24"]])
+    #     new_data = pd.DataFrame(
+    #         one_hot.transform(x[["x_2", "x_21", "x_24"]]).toarray(),  # type: ignore
+    #     )
+    #     x = x.drop(columns=["x_2", "x_21", "x_24"])
+    #     x = pd.concat([x, new_data], axis=1)
+    else:
+        raise ValueError(f"Dataset {dataset} not recognized")
+
+    return data, x, t, y
+
+
+def generating_random_sites_from(XandT, exp_parameters, added_T_coef=1):
     
     candidates = {}
-    sample_size, number_covariates = np.shape(data)[0], np.shape(data)[1]
+    sample_size, number_features = np.shape(XandT)[0], np.shape(XandT)[1]
     function_indices = {0: lambda X: np.log(X+1), 1: lambda X: X**3, 2: lambda X: X, 3: lambda X: X**2 }
     number_of_candidate_sites = exp_parameters['number_of_candidate_sites']
     min_sample_size_cand = exp_parameters['min_sample_size_cand']
@@ -16,10 +81,9 @@ def generating_random_sites_from(data, exp_parameters, added_T_coef=1):
     std_true_y = exp_parameters['std_true_y']
     power_x = exp_parameters['power_x']
     power_x_t = exp_parameters['power_x_t']
-    number_features = number_covariates
     created_sites = 0
     
-    while created_sites < number_of_candidate_sites:
+    while created_sites < number_of_candidate_sites : # inforce + 1 cause we also subsample a host site
 
         np.random.seed(np.random.randint(10000))
         
@@ -33,68 +97,30 @@ def generating_random_sites_from(data, exp_parameters, added_T_coef=1):
             for j in range(number_features-1):
                 result += selected_features_for_subsampling[j] * random_coefs[j] * function_indices[random_fct_idx[j]](X[j])
             # here i use added_T_coef * random_coefs to increase importance of T
-            result +=  added_T_coef * random_coefs[-1] *  function_indices[random_fct_idx[-1]](T) #selected_features_for_subsampling[-1]
+            result +=  added_T_coef * random_coefs[-1] *  function_indices[random_fct_idx[-1]](T) # T always selected in the end
             return sigmoid(result + eps)
         
-        sample_size = np.random.randint(min_sample_size_cand, max_sample_size_cand + 1)  # Add 1 to include max_sample_size_cand
 
         if created_sites==0:
-            sample_size = exp_parameters['host_sample_size']+ 2000
+            sample_size = exp_parameters['host_sample_size']+ exp_parameters['host_test_size']
+
+        else:
+            sample_size = np.random.randint(min_sample_size_cand, max_sample_size_cand + 1)  # Add 1 to include max_sample_size_cand
+
         design_data_cand = subsample_one_dataset(XandT, p_assigned_to_site, sample_size, power_x, power_x_t, outcome_function, std_true_y, seed=np.random.randint(10000))
         design_data_cand = design_data_cand.dropna()
         any_nan = design_data_cand.isna().any().any()
-        if not design_data_cand.empty and not any_nan: # we're appending
-            if created_sites==0:
-                if (design_data_cand["T"].mean() == 0 or design_data_cand["T"].mean() == 1): 
-                    pass
-                else:
-                    candidates[created_sites] = design_data_cand
-                    created_sites += 1
-            else:
-                candidates[created_sites] = design_data_cand
-                created_sites += 1
+        at_least_10_treated = np.sum(design_data_cand["T"]) > 10
+        at_least_10_untreated = len(design_data_cand["T"])-np.sum(design_data_cand["T"]) > 10
+
+        if not design_data_cand.empty and not any_nan and at_least_10_untreated and at_least_10_treated: 
+            # we're appending
+            candidates[created_sites] = design_data_cand
+            created_sites += 1
         else:
             pass # not appending
             
     return candidates
-
-def get_data(dataset: str, path: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
-    """
-    Get the data for the specified dataset.
-
-    Args:
-        dataset: name of the dataset load.
-            Currently, the options are 'twins' and 'acic'.
-
-    Returns:
-        tuple[pd.DataFrame, pd.DataFrame, np.ndarray, np.ndarray]: data, covariates, treatment assignment, and outcomes
-    """
-    if dataset == "twins":
-        data = pd.read_csv(path + "data/twins_ztwins_sample0.csv")
-        x = data.drop(columns=["y0", "y1", "ite", "y", "t"])
-        t = data["t"]
-        y = data["y"]
-
-    elif dataset == "acic":
-        data = pd.read_csv(path + "data/acic_zymu_174570858.csv")
-        x = pd.read_csv(path + "data/acic_x.csv")
-        t = data["z"]
-        y = data["y0"]
-        idx_to_change = data.loc[data["z"] == 1].index.to_list()
-        for idx in idx_to_change:
-            y.loc[idx] = data["y1"].loc[idx]
-        y = y.rename("y")
-        one_hot = OneHotEncoder(drop="first").fit(x[["x_2", "x_21", "x_24"]])
-        new_data = pd.DataFrame(
-            one_hot.transform(x[["x_2", "x_21", "x_24"]]).toarray(),  # type: ignore
-        )
-        x = x.drop(columns=["x_2", "x_21", "x_24"])
-        x = pd.concat([x, new_data], axis=1)
-    else:
-        raise ValueError(f"Dataset {dataset} not recognized")
-
-    return data, x, t, y
-
 
 def generate_rct(
     x_sampled_covariates: dict[str, np.ndarray], seed: int = 0
@@ -293,6 +319,7 @@ def subsample_one_dataset(
     if sample_size > XandT.shape[0]:
         raise ValueError("sample_size > n_global")
     np.random.seed(seed)
+
 
     data = pd.DataFrame(index=range(sample_size), columns=XandT.columns, dtype=float) 
     count_cand2 = 0

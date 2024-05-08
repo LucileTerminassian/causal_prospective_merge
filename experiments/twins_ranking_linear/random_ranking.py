@@ -235,7 +235,7 @@ with warnings.catch_warnings():
                     pred_cate = learner.predict(X_one)-learner.predict(X_zero)
 
                     merged_mse_models["lin"] = merged_mse_models.get("lin",[]) + [(mean_squared_error(true_cate, pred_cate))]
-                    
+
                     
                 if cfg["model_param"]["GP"]["run"]:
                     
@@ -333,8 +333,6 @@ with warnings.catch_warnings():
                 
                 # the more diff in pscore the better so reverse=True
 
-                print(random_ranking)
-                print(true_cate_ranking)
                 
                 compare_to_ground_truth(correlation_with_true_rankings["lin"], true_cate_ranking, list(random_ranking),merged_mse=merged_mse_models["lin"], top_n = top_n, k = k)
                 compare_to_ground_truth(correlation_with_true_rankings["lin"], true_cate_ranking, list(sample_size_order),merged_mse=merged_mse_models["lin"], top_n = top_n, k = k)
@@ -414,6 +412,6 @@ with warnings.catch_warnings():
 
 
             with open(dump_path, 'w') as f:
-                yaml.dump( correlation_with_true_rankings, f)
+                yaml.dump(correlation_with_true_rankings, f)
         # except:
         #     print("Error, skipping to next")
