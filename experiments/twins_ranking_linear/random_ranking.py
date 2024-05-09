@@ -411,8 +411,8 @@ with warnings.catch_warnings():
                 correlation_with_true_rankings["GP"]["Method"] = correlation_with_true_rankings["GP"].get("Method",[]) + ['obs_closed_form', 'caus_closed_form', 'random', 'sample size', 'similarity_cov_distrib_ranking', 'similarity_pscore_ranking size']
 
 
-            with open(dump_path, 'w') as f:
-                yaml.dump(correlation_with_true_rankings, f)
+    with open(dump_path, 'w') as f:
+        yaml.dump(correlation_with_true_rankings, f)
         # except:
         #     print("Error, skipping to next")
                 

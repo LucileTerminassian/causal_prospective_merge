@@ -457,9 +457,10 @@ class BayesianCausalForest:
 
 class CausalGP:
 
-    def __init__(self,max_gp_iterations=100) -> None:
+    def __init__(self,max_gp_iterations=100,min_var=0.01) -> None:
         self.max_gp_iterations = max_gp_iterations
         self.model = None
+        self.min_var = min_var
 
     def fit(self,X_train,T_train,Y_train):
 
@@ -506,8 +507,8 @@ class CausalGP:
 
         n_1,n_0 = len(X1),len(X0)
 
-        sign, logdet = np.linalg.slogdet(Sigma_1)
-        return 0.5*(logdet - n_0 * np.log(self.model.model.likelihood[0]) - n_1 * np.log(self.model.model.likelihood[1]))
+        sign, logdet = np.linalg.slogdet(Sigma_1+self.min_var*np.eye(Sigma_1.shape[0]))
+        return 0.5*(logdet - n_0 * np.log(self.model.model.likelihood[0]+self.min_var*np.eye(Sigma_1.shape[0])) - n_1 * np.log(self.model.model.likelihood[1]+self.min_var*np.eye(Sigma_1.shape[0])))
     
     def causal_EIG_closed_form(self,X,T,holdout_X = None):
 
@@ -516,7 +517,7 @@ class CausalGP:
             holdout_X1 = self.X1_train
         
         else:
-            holdout_X,holdout_T = holdout_X
+            holdout_X = holdout_X
 
             holdout_X0 = np.array(np.hstack([holdout_X, np.zeros_like(holdout_X[:, 1].reshape((len(holdout_X[:, 1]), 1)))]))
             holdout_X1 = np.hstack([holdout_X, np.ones_like(holdout_X[:, 1].reshape((len(holdout_X[:, 1]), 1)))])
@@ -574,7 +575,8 @@ class CausalGP:
         )
     
 
-        sign, logdet1 = np.linalg.slogdet(Sigma_1)
-        sign, logdet2 = np.linalg.slogdet(Sigma_2)
-        sign, logdet_sig = np.linalg.slogdet(Sigma)
+        sign, logdet1 = np.linalg.slogdet(Sigma_1+self.min_var*np.eye(Sigma_1.shape[0]))
+        sign, logdet2 = np.linalg.slogdet(Sigma_2+self.min_var*np.eye(Sigma_2.shape[0]))
+        sign, logdet_sig = np.linalg.slogdet(Sigma+self.min_var*np.eye(Sigma.shape[0]))
+
         return logdet1+logdet2-logdet_sig
