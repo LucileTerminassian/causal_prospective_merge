@@ -5,12 +5,12 @@
 
 # Experiment_parameters
 
-data_name: 'acic'
-num_repeats: 20
-number_of_candidate_sites : 10
+data_name: 'twins'
+num_repeats: 100 # was 20
+number_of_candidate_sites : 30 # was 10
 
-min_sample_size_cand : 200 
-max_sample_size_cand : 400
+min_sample_size_cand : 300 
+max_sample_size_cand : 500
 host_sample_size : 400 
 host_test_size : 2000
 desired_initial_sample_size : 1.e+4
