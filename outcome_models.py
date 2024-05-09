@@ -457,7 +457,7 @@ class BayesianCausalForest:
 
 class CausalGP:
 
-    def __init__(self,max_gp_iterations=100,min_var=0.01) -> None:
+    def __init__(self,max_gp_iterations=100,min_var=0.0) -> None:
         self.max_gp_iterations = max_gp_iterations
         self.model = None
         self.min_var = min_var
