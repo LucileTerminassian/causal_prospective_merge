@@ -6,7 +6,7 @@
 # Experiment_parameters
 
 data_name: 'twins'
-num_repeats: 500 # was 20
+num_repeats: 50 # was 20
 number_of_candidate_sites : 30 # was 10
 
 min_sample_size_cand : 300 
