@@ -4,7 +4,7 @@ import pandas as pd
 from sklearn.preprocessing import OneHotEncoder
 from typing import Union, List
 from causallib import datasets
-
+from sklearn.preprocessing import StandardScaler
 
 def get_data(dataset: str, path: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
     """
@@ -47,6 +47,23 @@ def get_data(dataset: str, path: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.Se
         x = data.drop(columns=["y0", "y1", "ite", "Y", "T"])
         t = data["T"]
         y = data["Y"]
+    
+    elif dataset == "IDHP":
+        data = pd.read_csv("https://raw.githubusercontent.com/AMLab-Amsterdam/CEVAE/master/datasets/IHDP/csv/ihdp_npci_1.csv", header = None)
+        col =  ["T", "Y", "y_cf", "y0", "y1" ,]
+        for i in range(1,26):
+            col.append("x"+str(i))
+        data.columns = col
+        data = data.astype({"T":'float'}, copy=False)
+        data = data.drop(columns=["y_cf"])
+        x = data[["x"+str(i) for  i in range(1,26)]]
+        IDHP_scalar = StandardScaler().fit(x)
+        x = IDHP_scalar.transform(x)
+        data[["x"+str(i) for  i in range(1,26)]] = x
+        x = data[["x"+str(i) for  i in range(1,26)]]
+        t = data['T']
+        y = data['Y']
+
 
     # elif dataset == "acic":
     #     data = pd.read_csv(path + "data/acic_zymu_174570858.csv")
@@ -73,7 +90,7 @@ def generating_random_sites_from(XandT, exp_parameters, added_T_coef=1):
     
     candidates = {}
     sample_size, number_features = np.shape(XandT)[0], np.shape(XandT)[1]
-    function_indices = {0: lambda X: np.log(X+1), 1: lambda X: X**3, 2: lambda X: X, 3: lambda X: X**2 }
+    function_indices = {0: lambda X: np.tan(X), 1: lambda X: X**3, 2: lambda X: X, 3: lambda X: X**2 }
     number_of_candidate_sites = exp_parameters['number_of_candidate_sites']
     min_sample_size_cand = exp_parameters['min_sample_size_cand']
     max_sample_size_cand = exp_parameters['max_sample_size_cand']
@@ -110,10 +127,10 @@ def generating_random_sites_from(XandT, exp_parameters, added_T_coef=1):
         design_data_cand = subsample_one_dataset(XandT, p_assigned_to_site, sample_size, power_x, power_x_t, outcome_function, std_true_y, seed=np.random.randint(10000))
         design_data_cand = design_data_cand.dropna()
         any_nan = design_data_cand.isna().any().any()
-        at_least_10_treated = np.sum(design_data_cand["T"]) > 10
-        at_least_10_untreated = len(design_data_cand["T"])-np.sum(design_data_cand["T"]) > 10
+        at_least_20_treated = np.sum(design_data_cand["T"]) > 20
+        at_least_20_untreated = len(design_data_cand["T"])-np.sum(design_data_cand["T"]) > 20
 
-        if not design_data_cand.empty and not any_nan and at_least_10_untreated and at_least_10_treated: 
+        if not design_data_cand.empty and not any_nan and at_least_20_untreated and at_least_20_treated: 
             # we're appending
             candidates[created_sites] = design_data_cand
             created_sites += 1
