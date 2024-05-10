@@ -85,6 +85,12 @@ causal_param_first_index = power_x*np.shape(XandT)[1]
 
 correlation_with_true_rankings={}
 
+if cfg["model_param"]["Linear"]["run"]:
+    correlation_with_true_rankings["lin"] = {}
+
+if cfg["model_param"]["GP"]["run"]:
+    correlation_with_true_rankings["GP"] = {}
+
 # Create output directory if doesn't exists
 now = datetime.now()
 date_time_str = now.strftime("%m-%d %H:%M:%S")
@@ -228,7 +234,7 @@ with warnings.catch_warnings():
                     
                     if data_name == "twins": # binary outcome
                         true_cate = (X_one - X_zero) @ beta
-                    elif data_name == "acic": # use ground truth
+                    else: # use ground truth
                         indices_list = XandT_host_test.index.tolist()
                         true_cate = data_with_groundtruth['y1'].iloc[indices_list]- data_with_groundtruth['y0'].iloc[indices_list]
 
@@ -271,7 +277,7 @@ with warnings.catch_warnings():
                
             if cfg["model_param"]["Linear"]["run"]:
 
-                correlation_with_true_rankings["lin"] = {}
+                
 
                 obs_eig_ranking_closed_form = sorted(range(len(eig_results[" EIG_obs_lin"])), key=lambda i: eig_results[" EIG_obs_lin"][i], reverse=True)
 
@@ -343,7 +349,6 @@ with warnings.catch_warnings():
 
             if cfg["model_param"]["GP"]["run"]:
 
-                correlation_with_true_rankings["GP"] = {}
 
                 obs_eig_ranking_closed_form = sorted(range(len(eig_results[" EIG_obs_lin"])), key=lambda i: eig_results[" EIG_obs_lin"][i], reverse=True)
 
@@ -411,10 +416,10 @@ with warnings.catch_warnings():
                 correlation_with_true_rankings["GP"]["Method"] = correlation_with_true_rankings["GP"].get("Method",[]) + ['obs_closed_form', 'caus_closed_form', 'random', 'sample size', 'similarity_cov_distrib_ranking', 'similarity_pscore_ranking size']
 
 
-    with open(dump_path, 'w') as f:
-        yaml.dump(correlation_with_true_rankings, f)
-        # except:
-        #     print("Error, skipping to next")
+            with open(dump_path, 'w') as f:
+                yaml.dump(correlation_with_true_rankings, f)
+                # except:
+                #     print("Error, skipping to next")
                 
 results_df = pd.DataFrame(correlation_with_true_rankings)
 results_df.to_csv(os.path.join(direct_path, 'full_results.csv'))

@@ -457,7 +457,7 @@ class BayesianCausalForest:
 
 class CausalGP:
 
-    def __init__(self,max_gp_iterations=100,min_var=0.01) -> None:
+    def __init__(self,max_gp_iterations=100,min_var=0.0) -> None:
         self.max_gp_iterations = max_gp_iterations
         self.model = None
         self.min_var = min_var
@@ -508,7 +508,7 @@ class CausalGP:
         n_1,n_0 = len(X1),len(X0)
 
         sign, logdet = np.linalg.slogdet(Sigma_1+self.min_var*np.eye(Sigma_1.shape[0]))
-        return 0.5*(logdet - n_0 * np.log(self.model.model.likelihood[0]+self.min_var*np.eye(Sigma_1.shape[0])) - n_1 * np.log(self.model.model.likelihood[1]+self.min_var*np.eye(Sigma_1.shape[0])))
+        return 0.5*(logdet - n_0 * np.log(self.model.model.likelihood[0]+self.min_var)) - n_1 * np.log(self.model.model.likelihood[1]+self.min_var)
     
     def causal_EIG_closed_form(self,X,T,holdout_X = None):
 
