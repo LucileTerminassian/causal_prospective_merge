@@ -127,10 +127,10 @@ def generating_random_sites_from(XandT, exp_parameters, added_T_coef=1):
         design_data_cand = subsample_one_dataset(XandT, p_assigned_to_site, sample_size, power_x, power_x_t, outcome_function, std_true_y, seed=np.random.randint(10000))
         design_data_cand = design_data_cand.dropna()
         any_nan = design_data_cand.isna().any().any()
-        at_least_20_treated = np.sum(design_data_cand["T"]) > 20
-        at_least_20_untreated = len(design_data_cand["T"])-np.sum(design_data_cand["T"]) > 20
+        at_least_30_treated = np.sum(design_data_cand["T"]) > 30
+        at_least_30_untreated = len(design_data_cand["T"])-np.sum(design_data_cand["T"]) > 30
 
-        if not design_data_cand.empty and not any_nan and at_least_20_untreated and at_least_20_treated: 
+        if not design_data_cand.empty and not any_nan and at_least_30_untreated and at_least_30_treated: 
             # we're appending
             candidates[created_sites] = design_data_cand
             created_sites += 1
