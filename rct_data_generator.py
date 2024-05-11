@@ -56,13 +56,14 @@ def get_data(dataset: str, path: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.Se
         data.columns = col
         data = data.astype({"T":'float'}, copy=False)
         data = data.drop(columns=["y_cf"])
-        x = data[["x"+str(i) for  i in range(1,26)]]
+        x = data[["x"+str(i) for  i in range(1,6)]]
         IDHP_scalar = StandardScaler().fit(x)
         x = IDHP_scalar.transform(x)
-        data[["x"+str(i) for  i in range(1,26)]] = x
+        data[["x"+str(i) for  i in range(1,6)]] = x
         x = data[["x"+str(i) for  i in range(1,26)]]
         t = data['T']
         y = data['Y']
+    
 
 
     # elif dataset == "acic":
@@ -82,7 +83,13 @@ def get_data(dataset: str, path: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.Se
     #     x = pd.concat([x, new_data], axis=1)
     else:
         raise ValueError(f"Dataset {dataset} not recognized")
+    y_std = y.std()
+    y_mean = y.mean()
+    y = (y - y.mean())/y_std
+    data['Y'] = y
 
+    if "y0" in data.columns:
+        data[["y0","y1"]] = (data[["y0","y1"]] - y_mean) /y_std
     return data, x, t, y
 
 
