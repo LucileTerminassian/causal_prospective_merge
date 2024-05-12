@@ -93,9 +93,9 @@ def get_data(dataset: str, path: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.Se
     return data, x, t, y
 
 
-def generating_random_sites_from(XandT, exp_parameters, added_T_coef=1, binary_outcome=False):
+def generating_random_sites_from(XandT, data_with_groundtruth, exp_parameters, added_T_coef=1, binary_outcome=False):
     
-    candidates = {}
+    candidate_sites = {}
     sample_size, number_features = np.shape(XandT)[0], np.shape(XandT)[1]
     function_indices = {0: lambda X: np.tan(X), 1: lambda X: X**3, 2: lambda X: X, 3: lambda X: X**2 }
     number_of_candidate_sites = exp_parameters['number_of_candidate_sites']
@@ -136,19 +136,23 @@ def generating_random_sites_from(XandT, exp_parameters, added_T_coef=1, binary_o
         any_nan = design_data_cand.isna().any().any()
         at_least_20_treated = np.sum(design_data_cand["T"]) > 20
         at_least_20_untreated = len(design_data_cand["T"])-np.sum(design_data_cand["T"]) > 20
+        candidate = pd.concat([design_data_cand, data_with_groundtruth.loc[design_data_cand.index, 'Y']], axis=1)
+
         if binary_outcome:
-            print(list(design_data_cand.columns))
             at_least_20_y_equal1 = np.sum(design_data_cand["Y"]) > 20
             at_least_20_y_equal0 = len(design_data_cand["Y"])-np.sum(design_data_cand["Y"]) > 20
+        else:
+            at_least_20_y_equal1 = at_least_20_y_equal0 = True
 
         if not design_data_cand.empty and not any_nan and at_least_20_treated and at_least_20_untreated and at_least_20_y_equal1 and at_least_20_y_equal0: 
             # we're appending
-            candidates[created_sites] = design_data_cand
+            candidate_sites[created_sites] = candidate
             created_sites += 1
         else:
             pass # not appending
+
             
-    return candidates
+    return candidate_sites
 
 def generate_rct(
     x_sampled_covariates: dict[str, np.ndarray], seed: int = 0

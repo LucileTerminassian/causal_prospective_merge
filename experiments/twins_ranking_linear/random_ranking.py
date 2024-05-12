@@ -115,8 +115,6 @@ with warnings.catch_warnings():
             #dictionnary of random sites
             candidate_sites = generating_random_sites_from(XandT, exp_parameters, added_T_coef=50, binary_outcome=binary_outcome)
 
-            for i, cand in candidate_sites.items():
-                candidate_sites[i] = pd.concat([cand, data_with_groundtruth.loc[cand.index, 'Y']], axis=1)
 
             if data_name=="twins":
                 dimension = np.shape(candidate_sites[0])[1]-1
