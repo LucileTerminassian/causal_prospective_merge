@@ -137,6 +137,7 @@ def generating_random_sites_from(XandT, exp_parameters, added_T_coef=1, binary_o
         at_least_20_treated = np.sum(design_data_cand["T"]) > 20
         at_least_20_untreated = len(design_data_cand["T"])-np.sum(design_data_cand["T"]) > 20
         if binary_outcome:
+            print(list(design_data_cand.columns))
             at_least_20_y_equal1 = np.sum(design_data_cand["Y"]) > 20
             at_least_20_y_equal0 = len(design_data_cand["Y"])-np.sum(design_data_cand["Y"]) > 20
 
