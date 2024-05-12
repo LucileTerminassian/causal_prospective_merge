@@ -138,7 +138,7 @@ def generating_random_sites_from(XandT, exp_parameters, added_T_coef=1, binary_o
         at_least_20_untreated = len(design_data_cand["T"])-np.sum(design_data_cand["T"]) > 20
         if binary_outcome:
             at_least_20_y_equal1 = np.sum(design_data_cand["Y"]) > 20
-            at_least_20_y_equal0 = len(design_data_cand["Y"])-np.sum(design_data_cand["T"]) > 20
+            at_least_20_y_equal0 = len(design_data_cand["Y"])-np.sum(design_data_cand["Y"]) > 20
 
         if not design_data_cand.empty and not any_nan and at_least_20_treated and at_least_20_untreated and at_least_20_y_equal1 and at_least_20_y_equal0: 
             # we're appending
