@@ -139,8 +139,8 @@ def generating_random_sites_from(XandT, data_with_groundtruth, exp_parameters, a
         candidate = pd.concat([design_data_cand, data_with_groundtruth.loc[design_data_cand.index, 'Y']], axis=1)
 
         if binary_outcome:
-            at_least_20_y_equal1 = np.sum(design_data_cand["Y"]) > 20
-            at_least_20_y_equal0 = len(design_data_cand["Y"])-np.sum(design_data_cand["Y"]) > 20
+            at_least_20_y_equal1 = np.sum(candidate["Y"]) > 20
+            at_least_20_y_equal0 = len(candidate["Y"])-np.sum(candidate["Y"]) > 20
         else:
             at_least_20_y_equal1 = at_least_20_y_equal0 = True
 
