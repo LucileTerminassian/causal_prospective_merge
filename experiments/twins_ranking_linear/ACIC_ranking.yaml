@@ -6,7 +6,7 @@
 # Experiment_parameters
 
 data_name: 'IDHP'
-num_repeats: 10
+num_repeats: 50
 number_of_candidate_sites : 20
 
 min_sample_size_cand : 200 
