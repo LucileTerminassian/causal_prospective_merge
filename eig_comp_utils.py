@@ -159,10 +159,10 @@ def compute_EIG_causal_from_samples(pred_list_unpaired, pred_list_paired, sigma)
         y_sample = mvn.rvs()
         sample_list.append(
             log_posterior_predictive(
-                y_sample, y_pred_multiple_paired, covariance, y_pred
+                y_sample, y_pred_multiple_paired, covariance
             )
             - log_posterior_predictive(
-                y_sample, y_pred_multiple_unpaired, covariance, y_pred
+                y_sample, y_pred_multiple_unpaired, covariance
             ))
     return sum(sample_list) / len(sample_list)
 

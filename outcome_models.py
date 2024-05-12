@@ -214,11 +214,11 @@ class BayesianLinearRegression:
         n_samples = n_samples_outer_expectation * (n_samples_inner_expectation + 1)
         posterior_samples = self.posterior_sample(n_samples=n_samples)
         predicitions = posterior_samples @ X.T
-        predictions_upaired = predictions_in_EIG_obs_form(
+        predictions_unpaired = predictions_in_EIG_obs_form(
             predicitions, n_samples_outer_expectation, n_samples_inner_expectation
         )
         return compute_EIG_causal_from_samples(
-            predictions_upaired, predictions_paired, self.sigma_0_sq ** (1 / 2)
+            predictions_unpaired, predictions_paired, self.sigma_0_sq ** (1 / 2)
         )
 
 
@@ -229,7 +229,7 @@ class BayesianCausalForest:
         predictive_model_parameters={},
         conditional_model_param={},
         max_sample_num = 1000,
-        cond_max_samples_number = 30
+        cond_max_samples_number = 20
     ):
         self.sigma_0_sq = prior_hyperparameters["sigma_0_sq"]
         self.p_categorical_pr = prior_hyperparameters["p_categorical_pr"]
@@ -583,12 +583,12 @@ class BayesianCausalForest:
             b = self.model.b
             b_adj = b / (np.expand_dims(b[:, 1] - b[:, 0], axis=1))
 
-            tau_train = (self.model.tauhats * (b_adj.T[T])).T
+            tau_train = (self.model.tauhats * (b_adj.T[self.T_train])).T
             
 
             print("Getting conditional samples")
             causal_sample = []
-            for i in (random_sample):
+            for i in tqdm(random_sample):
 
                 model = XBCF(
                 num_trees_trt=0,
@@ -624,7 +624,7 @@ class BayesianCausalForest:
             (sample,model) = self.cond_models[i]
             original_prediction = preds[sample]
             _, preds_conditonal = model.predict(X,X1,return_muhat=True,return_mean=False)
-            paired_predicitons = ((preds_conditonal + np.expand_dims(tau[i],axis=1)).T)
+            paired_predicitons = ((preds_conditonal + np.expand_dims(tau[sample],axis=1)).T)
             predictions_paired.append((original_prediction,paired_predicitons))
 
         posterior_predictive_entropy = calc_posterior_predictive_entropy(
