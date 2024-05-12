@@ -36,7 +36,7 @@ model_param:
 
   
   BART:
-    run: False
+    run: True
 
     prior_hyperparameters:
       sigma_0_sq : 1
