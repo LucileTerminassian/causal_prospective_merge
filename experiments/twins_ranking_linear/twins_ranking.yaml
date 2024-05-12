@@ -6,6 +6,7 @@
 # Experiment_parameters
 
 data_name: 'twins'
+binary_outcome: True
 num_repeats: 50 # was 20
 number_of_candidate_sites : 30 #
 

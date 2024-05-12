@@ -46,6 +46,7 @@ with open(args['--cfg'], "r") as f:
 
 data_path = main_dir+"/"
 data_name = cfg["data_name"]
+binary_outcome = cfg["binary_outcome"]
 data_with_groundtruth, x, t, y = get_data(data_name, data_path)
 XandT = pd.concat([x,t], axis=1)
 #data_with_groundtruth.drop(columns=['Y','y0','y1','ite'])
@@ -112,7 +113,7 @@ with warnings.catch_warnings():
         # try:
             XandT = XandT.sample(n=desired_initial_sample_size, replace=True, random_state=42)
             #dictionnary of random sites
-            candidate_sites = generating_random_sites_from(XandT, exp_parameters, added_T_coef=50)
+            candidate_sites = generating_random_sites_from(XandT, exp_parameters, added_T_coef=50, binary_outcome=binary_outcome)
 
             for i, cand in candidate_sites.items():
                 candidate_sites[i] = pd.concat([cand, data_with_groundtruth.loc[cand.index, 'Y']], axis=1)

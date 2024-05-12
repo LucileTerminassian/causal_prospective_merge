@@ -6,6 +6,7 @@
 # Experiment_parameters
 
 data_name: 'IDHP'
+binary_outcome: False
 num_repeats: 50
 number_of_candidate_sites : 20
 

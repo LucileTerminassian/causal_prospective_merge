@@ -93,7 +93,7 @@ def get_data(dataset: str, path: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.Se
     return data, x, t, y
 
 
-def generating_random_sites_from(XandT, exp_parameters, added_T_coef=1):
+def generating_random_sites_from(XandT, exp_parameters, added_T_coef=1, binary_outcome=False):
     
     candidates = {}
     sample_size, number_features = np.shape(XandT)[0], np.shape(XandT)[1]
@@ -136,8 +136,9 @@ def generating_random_sites_from(XandT, exp_parameters, added_T_coef=1):
         any_nan = design_data_cand.isna().any().any()
         at_least_20_treated = np.sum(design_data_cand["T"]) > 20
         at_least_20_untreated = len(design_data_cand["T"])-np.sum(design_data_cand["T"]) > 20
-        at_least_20_y_equal1 = np.sum(design_data_cand["Y"]) > 20
-        at_least_20_y_equal0 = len(design_data_cand["Y"])-np.sum(design_data_cand["T"]) > 20
+        if binary_outcome:
+            at_least_20_y_equal1 = np.sum(design_data_cand["Y"]) > 20
+            at_least_20_y_equal0 = len(design_data_cand["Y"])-np.sum(design_data_cand["T"]) > 20
 
         if not design_data_cand.empty and not any_nan and at_least_20_treated and at_least_20_untreated and at_least_20_y_equal1 and at_least_20_y_equal0: 
             # we're appending
