@@ -113,7 +113,7 @@ with warnings.catch_warnings():
         # try:
             XandT = XandT.sample(n=desired_initial_sample_size, replace=True, random_state=42)
             #dictionnary of random sites
-            candidate_sites = generating_random_sites_from(XandT, exp_parameters, added_T_coef=50, binary_outcome=binary_outcome)
+            candidate_sites = generating_random_sites_from(XandT, data_with_groundtruth, exp_parameters, added_T_coef=50, binary_outcome=binary_outcome)
 
 
             if data_name=="twins":
