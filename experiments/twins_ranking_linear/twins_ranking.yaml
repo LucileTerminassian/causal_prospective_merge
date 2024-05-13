@@ -7,8 +7,8 @@
 
 data_name: 'twins'
 binary_outcome: True
-num_repeats: 50
-number_of_candidate_sites : 30 #was 30
+num_repeats: 2 # was 50
+number_of_candidate_sites : 3 #was 30
 
 min_sample_size_cand : 200 
 max_sample_size_cand : 400 
@@ -39,44 +39,54 @@ model_param:
   BART:
     run: True
 
+  BART:
+    run: True
+
     prior_hyperparameters:
       sigma_0_sq : 1
-      p_categorical_pr: 0
-      p_categorical_trt : 0
+      p_categorical_pr: 19 #fix to number of categorical variables
+      p_categorical_trt : 19 #fix to number of categorical variables
 
     predictive_model_parameters:
       parallel : True 
-      burnin : 15 
-      max_depth : 250 
+      burnin : 100
+      max_depth : 250
       num_trees_pr : 200
-      num_trees_trt : 200
-      num_cutpoints : 100 
-      Nmin : 1 
-      tau_pr  : 0.6  #0.6 * np.var(y) / /NUM_TREES_PR 
-      tau_trt  : 0.1   #0.1 * np.var(y) / /NUM_TREES_TRT 
-      alpha_pr : 0.95  # shrinkage (splitting probability)
-      beta_pr  : 2  # shrinkage (tree depth)
-      alpha_trt  : 0.95  # shrinkage for treatment part
-      beta_trt  : 2 
-      standardize_target  : True 
-      parallel : True
+      num_trees_trt : 100
+      num_cutpoints : 300
+      Nmin: 10
+      mtry_pr: 0 # default 0 seems to be 'all'
+      mtry_trt: 0 
+      tau_pr : 0.03 #0.6 * np.var(y) / /NUM_TREES_PR
+      tau_trt : 0.003  #0.1 * np.var(y) / /NUM_TREES_TRT
+      alpha_pr: 0.95 # shrinkage (splitting probability)
+      beta_pr : 2 # shrinkage (tree depth)
+      alpha_trt : 0.95 # shrinkage for treatment part
+      beta_trt : 2
+      standardize_target : True
+      parallel: True
+      b_scaling: False
+      a_scaling: False
     
     conditional_model_param:
       parallel : True 
-      burnin : 15 
-      max_depth : 250 
+      burnin : 100
+      max_depth : 250
       num_trees_pr : 200
-      num_trees_trt : 200
-      num_cutpoints : 100 
-      Nmin : 1 
-      tau_pr  : 0.6  #0.6 * np.var(y) / /NUM_TREES_PR 
-      tau_trt  : 0.1   #0.1 * np.var(y) / /NUM_TREES_TRT 
-      alpha_pr : 0.95  # shrinkage (splitting probability)
-      beta_pr  : 2  # shrinkage (tree depth)
-      alpha_trt  : 0.95  # shrinkage for treatment part
-      beta_trt  : 2 
-      standardize_target  : True 
+      num_cutpoints : 300
+      Nmin : 10
+      mtry_pr : 0 # default 0 seems to be 'all'
+      mtry_trt : 0 
+      tau_pr : 0.003  #0.6 * np.var(y) / /NUM_TREES_PR
+      tau_trt : 0.003 #0.1 * np.var(y) / /NUM_TREES_TRT
+      alpha_pr: 0.95 # shrinkage (splitting probability)
+      beta_pr : 2 # shrinkage (tree depth)
+      alpha_trt : 0.95 # shrinkage for treatment part
+      beta_trt : 2
+      standardize_target : True
       parallel : True
+      b_scaling : False
+      a_scaling : False
 
     sampling_parameters:
       n_samples_outer_expectation_obs : 600
