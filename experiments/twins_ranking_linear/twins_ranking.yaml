@@ -7,8 +7,8 @@
 
 data_name: 'twins'
 binary_outcome: True
-num_repeats: 50 # was 20
-number_of_candidate_sites : 30 #
+num_repeats: 50
+number_of_candidate_sites : 30 #was 30
 
 min_sample_size_cand : 200 
 max_sample_size_cand : 400 
@@ -78,7 +78,7 @@ model_param:
       standardize_target  : True 
       parallel : True
 
-      sampling_parameters:
+    sampling_parameters:
       n_samples_outer_expectation_obs : 600
       n_samples_inner_expectation_obs : 400
       n_samples_outer_expectation_caus : 600
