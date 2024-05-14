@@ -27,13 +27,13 @@ std_true_y : 1
 model_param:
 
   Linear:
-    run: True
+    run: False
     power_x : 1
     power_x_t : 1
     sigma_rand_error : 1
   
   GP:
-    run: False
+    run: True
 
   
   BART:
