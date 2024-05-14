@@ -7,8 +7,8 @@
 
 data_name: 'IDHP'
 binary_outcome: False
-num_repeats: 50
-number_of_candidate_sites : 30
+num_repeats: 2
+number_of_candidate_sites : 3
 
 min_sample_size_cand : 200 
 max_sample_size_cand : 400
