@@ -233,9 +233,13 @@ def compare_to_ground_truth(results_dict, true_cate_ranking, eig_ranking, merged
     implied_ranking = [eig_ranking.index(val) for val in list(range(min(eig_ranking),max(eig_ranking)+1))]
     
     print(kendalltau(implied_ranking, merged_mse)[0])
-    results_dict['tau'] = results_dict.get('tau',[])+[(kendalltau(implied_ranking, merged_mse)[0]).item()] 
-    results_dict['rho'] = results_dict.get('rho',[])+[(spearmanr(implied_ranking, merged_mse)[0]).item()]  
+    if type((kendalltau(implied_ranking, merged_mse)[0])) is float:
 
+        results_dict['tau'] = results_dict.get('tau',[])+[(kendalltau(implied_ranking, merged_mse)[0])] 
+        results_dict['rho'] = results_dict.get('rho',[])+[(spearmanr(implied_ranking, merged_mse)[0])]  
+    else:
+        results_dict['tau'] = results_dict.get('tau',[])+[(kendalltau(implied_ranking, merged_mse)[0]).item()] 
+        results_dict['rho'] = results_dict.get('rho',[])+[(spearmanr(implied_ranking, merged_mse)[0]).item()]  
     if type(k) == int:
         results_dict['precision_at_k'] = results_dict.get('precision_at_k',[]) + [precision_at_k(true_cate_ranking, topn_eig_ranking, k=k)]
     else:
