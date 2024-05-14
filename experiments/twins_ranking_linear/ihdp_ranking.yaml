@@ -33,11 +33,11 @@ model_param:
     sigma_rand_error : 1
   
   GP:
-    run: True
+    run: False
 
   
   BART:
-    run: False
+    run: True
 
     prior_hyperparameters:
       sigma_0_sq : 1
