@@ -43,7 +43,7 @@ def get_data(dataset: str, path: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.Se
     elif dataset == "twins":
         data = pd.read_csv(path + "data/twins_ztwins_sample0.csv")
         data.dropna(inplace=True)
-        data.rename(columns={'t': 'T', 'y': 'Y'}, inplace=True)
+        data.rename(columns = {'t': 'T', 'y': 'Y'}, inplace=True)
         x = data.drop(columns=["y0", "y1", "ite", "Y", "T"])
         t = data["T"]
         y = data["Y"]
@@ -83,6 +83,7 @@ def get_data(dataset: str, path: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.Se
     #     x = pd.concat([x, new_data], axis=1)
     else:
         raise ValueError(f"Dataset {dataset} not recognized")
+    
     y_std = y.std()
     y_mean = y.mean()
     y = (y - y.mean())/y_std
@@ -90,6 +91,7 @@ def get_data(dataset: str, path: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.Se
 
     if "y0" in data.columns:
         data[["y0","y1"]] = (data[["y0","y1"]] - y_mean) /y_std
+
     return data, x, t, y
 
 
