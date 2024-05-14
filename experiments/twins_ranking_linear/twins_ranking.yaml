@@ -44,8 +44,8 @@ model_param:
 
     prior_hyperparameters:
       sigma_0_sq : 1
-      p_categorical_pr: 19 #fix to number of categorical variables
-      p_categorical_trt : 19 #fix to number of categorical variables
+      p_categorical_pr: 11 #fix to number of categorical variables
+      p_categorical_trt : 11 #fix to number of categorical variables
 
     predictive_model_parameters:
       parallel : True 
