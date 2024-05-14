@@ -63,7 +63,14 @@ def get_data(dataset: str, path: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.Se
         x = data[["x"+str(i) for  i in range(1,26)]]
         t = data['T']
         y = data['Y']
-    
+
+    elif dataset == 'lalonde':
+        data = pd.read_csv( path+ "data/lalonde_cps_sample0.csv")
+        data.dropna(inplace=True)
+        data.rename(columns = {'t': 'T', 'y': 'Y'}, inplace=True)
+        x = data.drop(columns=["y0", "y1", "ite", "Y", "T"])
+        t = data["T"]
+        y = data["Y"]
 
 
     # elif dataset == "acic":
