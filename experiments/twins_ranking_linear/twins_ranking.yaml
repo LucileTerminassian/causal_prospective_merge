@@ -7,11 +7,11 @@
 
 data_name: 'twins'
 binary_outcome: True
-num_repeats: 2 # was 50
-number_of_candidate_sites : 3 #was 30
+num_repeats: 50 
+number_of_candidate_sites : 30 
 
-min_sample_size_cand : 200 
-max_sample_size_cand : 400 
+min_sample_size_cand : 300 
+max_sample_size_cand : 500 
 host_sample_size : 400 
 host_test_size : 2000
 desired_initial_sample_size : 1.e+5
@@ -40,7 +40,7 @@ model_param:
     run: True
 
   BART:
-    run: True
+    run: False
 
     prior_hyperparameters:
       sigma_0_sq : 1
