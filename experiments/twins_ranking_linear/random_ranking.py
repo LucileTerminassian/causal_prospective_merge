@@ -98,7 +98,7 @@ if cfg["model_param"]["BART"]["run"]:
 # Create output directory if doesn't exists
 now = datetime.now()
 date_time_str = now.strftime("%m-%d %H:%M:%S")
-direct_path = os.path.join(args['--o'],date_time_str)
+direct_path = os.path.join(args['--o'],date_time_str.replace(" ","-"))
 os.makedirs(direct_path, exist_ok=True)
 with open(os.path.join(direct_path, 'cfg.yaml'), 'w') as f:
     yaml.dump(cfg, f)
@@ -167,7 +167,10 @@ with warnings.catch_warnings():
                 T_host = host["T"].values.astype(np.int32).copy()
                 Y_host = host["Y"].values
                 bcf.store_train_data(X=X_host,T=T_host.astype(np.int32),Y=Y_host)
-                
+            
+            XandT_host=host.drop(columns=["Y"])
+            XandT_host_test = host_test.drop(columns=["Y"])
+
             for _, candidate in candidate_sites.items():
 
                 X_cand = torch.from_numpy(candidate.drop(columns=["Y"]).values)
@@ -223,9 +226,16 @@ with warnings.catch_warnings():
             X_one.iloc[:,causal_param_first_index:] = XandT_host_test.iloc[:,:causal_param_first_index]
 
             merged_mse_models = {}
+            
+            if data_name == "twins": # binary outcome
+                true_cate = (X_one - X_zero) @ beta
+            else: # use ground truth
+                indices_list = XandT_host_test.index.tolist()
+                true_cate = data_with_groundtruth['y1'].iloc[indices_list]- data_with_groundtruth['y0'].iloc[indices_list]
 
             for i, candidate in merged_datasets.items():
-                
+               
+
                 if cfg["model_param"]["Linear"]["run"]:
 
                     XandT_merged = candidate.drop(columns=["Y"])
@@ -234,12 +244,7 @@ with warnings.catch_warnings():
                     learner = Ridge(fit_intercept=True)
                     learner.fit(y=Y_merged, X=XandT_merged) # we fit on merged datasets
                     
-                    if data_name == "twins": # binary outcome
-                        true_cate = (X_one - X_zero) @ beta
-                    else: # use ground truth
-                        indices_list = XandT_host_test.index.tolist()
-                        true_cate = data_with_groundtruth['y1'].iloc[indices_list]- data_with_groundtruth['y0'].iloc[indices_list]
-
+                    
                     pred_cate = learner.predict(X_one)-learner.predict(X_zero)
 
                     merged_mse_models["lin"] = merged_mse_models.get("lin",[]) + [(mean_squared_error(true_cate, pred_cate))]

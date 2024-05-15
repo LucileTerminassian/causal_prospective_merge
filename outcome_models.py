@@ -242,6 +242,8 @@ class BayesianCausalForest:
         self.cond_max_samples_number = cond_max_samples_number
         self.model = None
         self.cond_models = None
+        self.pred_model_param["tau_pr"],self.pred_model_param["tau_trt"] = self.pred_model_param["tau_pr"]/self.pred_model_param["num_trees_pr"] ,self.pred_model_param["tau_trt"]/self.pred_model_param["num_trees_trt"]
+        self.cond_model_param["tau_pr"] = self.pred_model_param["tau_pr"]/self.pred_model_param["num_trees_pr"]
 
     # def set_model_atrs(self,**kwargs):
     #             for k,v in kwargs.items():
@@ -252,6 +254,8 @@ class BayesianCausalForest:
         self.X_train = X
         self.Y_train = Y
         self.T_train = T
+        self.pred_model_param["tau_pr"],self.pred_model_param["tau_trt"] = np.var(Y)*self.pred_model_param["tau_pr"] ,np.var(Y)*self.pred_model_param["tau_trt"]
+        self.cond_model_param["tau_pr"] = np.var(Y)*self.pred_model_param["tau_pr"]
         self.X_train_prog = X
 
     def fit_propensity_model(self, num_trees=100, num_sweeps=80, burnin=15, **kwargs):
