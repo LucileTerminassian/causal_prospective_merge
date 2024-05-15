@@ -27,6 +27,43 @@ def chol_LD_Crypten(crypt_PSD_mat):
     
     return L_enc, D_enc
 
+def chol_LD_torch(matrix):
+
+    L =torch.zeros(matrix.shape)
+    D = torch.zeros(matrix.shape[0])
+
+    for i in (range(matrix.shape[0])):
+        L[i,i] = 1 
+        for j in range(matrix.shape[0]):
+            if i == j:
+                if i == 0:
+                    D[i] = matrix[i,i]
+                else:
+                    D[i] = (matrix[j,j] - L[j,:j].t() @ (L[j,:j]*D[:j]))
+            if i > j:
+                    if j>0:
+                        L[i,j] = (matrix[i,j] - L[i,:j].t()@ (L[j,:j]*D[:j]))/(D[j])
+                    else:
+                        L[i,j] = (matrix[i,j])/(D[j])
+    
+    return L, D
+
+def bairess_alg(encrypt,decrypted):
+    M = encrypt # make a copy to keep original M unmodified
+    N, sign, prev = len(M), 1, 1
+    for i in (range(N-1)):
+        if decrypted[i][i] == 0: # swap with another row having nonzero i's elem
+            swapto = next( (j for j in range(i+1,N) if decrypted[j][i] != 0), None )
+            if swapto is None:
+                return 0 # all M[*][i] are zero => zero determinant
+            M[i], M[swapto], sign = M[swapto], M[i], -sign
+        for j in (range(i+1,N)):
+            for k in range(i+1,N):
+                M[j][k] = ( M[j][k] * M[i][i] - M[j][i] * M[i][k] ).div(prev)
+        prev = M[i][i]
+    return sign * M[-1][-1]
+
+
 def logdet_Crypten(crypt_PSD_mat):
         _,D_enc = chol_LD_Crypten(crypt_PSD_mat)
         D_log_enc = D_enc.log()
