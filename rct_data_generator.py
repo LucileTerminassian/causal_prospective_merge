@@ -113,6 +113,7 @@ def generating_random_sites_from(XandT, data_with_groundtruth, exp_parameters, a
     outcome_function = None
     std_true_y = exp_parameters['std_true_y']
     power_x = exp_parameters['power_x']
+    min_treat_group_size = exp_parameters['min_treat_group_size']
     power_x_t = exp_parameters['power_x_t']
     created_sites = 0
     
@@ -143,8 +144,8 @@ def generating_random_sites_from(XandT, data_with_groundtruth, exp_parameters, a
         design_data_cand = subsample_one_dataset(XandT, p_assigned_to_site, sample_size, power_x, power_x_t, outcome_function, std_true_y, seed=np.random.randint(10000))
         design_data_cand = design_data_cand.dropna()
         any_nan = design_data_cand.isna().any().any()
-        at_least_30_treated = np.sum(design_data_cand["T"]) > 50
-        at_least_30_untreated = len(design_data_cand["T"])-np.sum(design_data_cand["T"]) > 50
+        at_least_30_treated = np.sum(design_data_cand["T"]) > min_treat_group_size
+        at_least_30_untreated = len(design_data_cand["T"])-np.sum(design_data_cand["T"]) > min_treat_group_size
         candidate = pd.concat([design_data_cand, data_with_groundtruth.loc[design_data_cand.index, 'Y']], axis=1)
 
         if binary_outcome:

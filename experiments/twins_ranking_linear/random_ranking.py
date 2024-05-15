@@ -59,6 +59,7 @@ max_sample_size_cand = cfg["max_sample_size_cand"]
 host_sample_size = cfg["host_sample_size"]
 host_test_size = cfg["host_test_size"]
 desired_initial_sample_size = int(cfg["desired_initial_sample_size"])
+min_treat_group_size = cfg['min_treat_group_size']
 
 k =cfg["k"]
 top_n = cfg["top_n"]
@@ -80,7 +81,8 @@ exp_parameters = {'number_of_candidate_sites': number_of_candidate_sites+1,
                 'outcome_function': outcome_function, 
                 'std_true_y': std_true_y, 
                 'power_x': power_x, 
-                'power_x_t': power_x_t}
+                'power_x_t': power_x_t,
+                'min_treat_group_size': min_treat_group_size}
 
 causal_param_first_index = power_x*np.shape(XandT)[1]
 
@@ -199,8 +201,6 @@ with warnings.catch_warnings():
 
                     X_cand = candidate.drop(columns=["Y","T"]).iloc[:,:causal_param_first_index].values.astype(np.float32)
                     T_cand = candidate["T"].values.copy().astype(np.int32)
-                    print(T_cand.dtype)
-                    print(X_cand.dtype)
                     result = bcf.joint_EIG_calc_eff(X_cand,T_cand.astype(np.int32),sampling_parameters=cfg["model_param"]["BART"]['sampling_parameters'])
                     eig_results["EIG_obs_bart"].append(
                             result["Obs EIG"]

@@ -231,8 +231,7 @@ def compare_to_ground_truth(results_dict, true_cate_ranking, eig_ranking, merged
         k = len(true_cate_ranking)
     
     implied_ranking = [eig_ranking.index(val) for val in list(range(min(eig_ranking),max(eig_ranking)+1))]
-    
-    print(kendalltau(implied_ranking, merged_mse)[0])
+
     if type((kendalltau(implied_ranking, merged_mse)[0])) is float:
 
         results_dict['tau'] = results_dict.get('tau',[])+[(kendalltau(implied_ranking, merged_mse)[0])] 
