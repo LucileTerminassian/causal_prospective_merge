@@ -511,7 +511,7 @@ with warnings.catch_warnings():
                 yaml.dump(correlation_with_true_rankings, f)
                 # except:
                 #     print("Error, skipping to next")
-            print(i)
+                
             
 for keys in correlation_with_true_rankings.keys():                 
     results_df = pd.DataFrame(correlation_with_true_rankings[keys])
