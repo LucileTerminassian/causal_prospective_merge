@@ -42,7 +42,7 @@ class CMGP:
         Treatments: np.ndarray,
         Y: np.ndarray,
         mode: str = "CMGP",
-        max_gp_iterations: int = 1000,
+        max_gp_iterations: int = 100,
     ) -> None:
         """
         Class constructor.

@@ -16,6 +16,7 @@ max_sample_size_cand : 500
 host_sample_size : 400 
 host_test_size : 2000
 desired_initial_sample_size : 1.e+4
+coef_sample_width : 5
 
 added_T_coef : 50 # to increase importance of T
 
@@ -35,7 +36,7 @@ model_param:
   
   GP:
     run: True
-
+    max_gp_iterations : 100
   
   BART:
     run: False

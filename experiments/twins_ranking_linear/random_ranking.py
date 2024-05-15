@@ -60,6 +60,7 @@ host_sample_size = cfg["host_sample_size"]
 host_test_size = cfg["host_test_size"]
 desired_initial_sample_size = int(cfg["desired_initial_sample_size"])
 min_treat_group_size = cfg['min_treat_group_size']
+coef_sample_width = cfg['coef_sample_width']
 
 k =cfg["k"]
 top_n = cfg["top_n"]
@@ -82,9 +83,12 @@ exp_parameters = {'number_of_candidate_sites': number_of_candidate_sites+1,
                 'std_true_y': std_true_y, 
                 'power_x': power_x, 
                 'power_x_t': power_x_t,
-                'min_treat_group_size': min_treat_group_size}
+                'min_treat_group_size': min_treat_group_size,
+                "coef_sample_width" : coef_sample_width}
 
 causal_param_first_index = power_x*np.shape(XandT)[1]
+
+max_gp_iterations = cfg["model_param"]["GP"]["max_gp_iterations"]
 
 correlation_with_true_rankings={}
 
@@ -115,7 +119,7 @@ with warnings.catch_warnings():
         # try:
             XandT = XandT.sample(n=desired_initial_sample_size, replace=True, random_state=42)
             #dictionnary of random sites
-            candidate_sites = generating_random_sites_from(XandT, data_with_groundtruth, exp_parameters, added_T_coef=50, binary_outcome=binary_outcome)
+            candidate_sites = generating_random_sites_from(XandT, data_with_groundtruth, exp_parameters, added_T_coef=20, binary_outcome=binary_outcome)
 
 
             if data_name=="twins":
@@ -287,9 +291,88 @@ with warnings.catch_warnings():
                     X_merged = candidate.drop(columns=["Y","T"]).iloc[:,:causal_param_first_index].values
                     T_merged = candidate["T"].values.astype(int)
                     Y_merged = candidate["Y"].values
-                    cGP_new = CausalGP()
+                    cGP_new = CausalGP(max_gp_iterations = max_gp_iterations)
 
-                    cGP_new.fit(X_merged,T_merged,Y_merged)
+                    # cGP_new.fit(X_merged,T_merged,Y_merged)
+                    # pred_cate = cGP_new.pred_CATE(X_host_test)
+
+                    Dataset = pd.DataFrame(X_merged)
+                
+
+                    Dataset["Y"] = Y_merged
+                    Dataset["T"] = T_merged
+                    dim = 26
+
+                    # if self.dim > 1:
+                    Feature_names = list(range(dim))
+                    # else:
+
+                    # Feature_names = [0]
+
+                    Dataset0 = Dataset[Dataset["T"] == 0].copy()
+                    Dataset1 = Dataset[Dataset["T"] == 1].copy()
+
+                    # Extract data for the first learning task (control population)
+                    X0 = np.reshape(Dataset0[Feature_names].copy(), (len(Dataset0), dim))
+                    y0 = np.reshape(np.array(Dataset0["Y"].copy()), (len(Dataset0), 1))
+
+                    # Extract data for the second learning task (treated population)
+                    X1 = np.reshape(Dataset1[Feature_names].copy(), (len(Dataset1), dim))
+                    y1 = np.reshape(np.array(Dataset1["Y"].copy()), (len(Dataset1), 1))
+
+                    # Create an instance of a GPy Coregionalization model
+                    K0 = GPy.kern.RBF(dim, ARD=True)
+                    K1 = GPy.kern.RBF(dim, ARD=True)
+
+                    kernel_dict = {
+                        "CMGP": GPy.util.multioutput.LCM(
+                            input_dim=dim, num_outputs=2, kernels_list=[K0, K1]
+                        ),
+                        "NSGP": GPy.util.multioutput.ICM(
+                            input_dim=dim, num_outputs=2, kernel=K0
+                        ),
+                    }
+
+                    model = GPy.models.GPCoregionalizedRegression(
+                        X_list=[X0, X1], Y_list=[y0, y1], kernel=kernel_dict["CMGP"]
+                    )
+                    
+                    model.kern = cGP.model.model.kern
+                    model.likelihood = cGP.model.model.likelihood
+                    
+                    X = X_host_test
+
+                    X_0 = np.array(
+                                    np.hstack([X, np.zeros_like(X[:, 1].reshape((len(X[:, 1]), 1)))])
+                                )
+
+                    X_1 = np.array(
+                        np.hstack([X, np.ones_like(X[:, 1].reshape((len(X[:, 1]), 1)))])
+                    )
+                    noise_dict_0 = {
+                                    "output_index": X_0[:, X_0.shape[1] - 1]
+                                    .reshape((X_0.shape[0], 1))
+                                    .astype(int)
+                                }
+
+                    noise_dict_1 = {
+                    "output_index": X_1[:, X_1.shape[1] - 1]
+                    .reshape((X_1.shape[0], 1))
+                    .astype(int)
+                                }
+                    
+
+
+                    Y_est_0 = np.array(
+                                    list(model.predict(X_0, Y_metadata=noise_dict_0)[0])
+                                )
+                    Y_est_1 = np.array(
+                        list(model.predict(X_1, Y_metadata=noise_dict_1)[0])
+                    )
+
+
+
+                    pred_cate = np.asarray(Y_est_1 - Y_est_0)
 
                     if data_name == "twins": #binary outcome
                         true_cate = (X_one - X_zero) @ beta
@@ -297,7 +380,7 @@ with warnings.catch_warnings():
                         indices_list = XandT_host_test.index.tolist()
                         true_cate = data_with_groundtruth['y1'].iloc[indices_list]- data_with_groundtruth['y0'].iloc[indices_list]
 
-                    pred_cate = cGP_new.pred_CATE(X_host_test)
+                    
                     merged_mse_models["GP"] = merged_mse_models.get("GP",[]) + [(mean_squared_error(true_cate, pred_cate))]
                
             if cfg["model_param"]["Linear"]["run"]:

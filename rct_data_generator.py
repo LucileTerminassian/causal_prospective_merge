@@ -106,7 +106,7 @@ def generating_random_sites_from(XandT, data_with_groundtruth, exp_parameters, a
     
     candidate_sites = {}
     sample_size, number_features = np.shape(XandT)[0], np.shape(XandT)[1]
-    function_indices = {0: lambda X: np.tan(X), 1: lambda X: X**3, 2: lambda X: X, 3: lambda X: X**2 }
+    function_indices = {0: lambda X: 1, 1: lambda X: X**3, 2: lambda X: X, 3: lambda X: X**2 }
     number_of_candidate_sites = exp_parameters['number_of_candidate_sites']
     min_sample_size_cand = exp_parameters['min_sample_size_cand']
     max_sample_size_cand = exp_parameters['max_sample_size_cand']
@@ -116,23 +116,24 @@ def generating_random_sites_from(XandT, data_with_groundtruth, exp_parameters, a
     min_treat_group_size = exp_parameters['min_treat_group_size']
     power_x_t = exp_parameters['power_x_t']
     created_sites = 0
-    
+    coef_sample_width = exp_parameters['coef_sample_width']
+
     while created_sites < number_of_candidate_sites : # inforce + 1 cause we also subsample a host site
 
         np.random.seed(np.random.randint(10000))
         
         selected_features_for_subsampling = np.random.randint(2, size = number_features) 
         # binary bool vector representing selection for being an input of the sampling function
-        random_coefs = [np.random.uniform(-10, 10) for _ in range(number_features)] 
+        random_coefs = [np.random.uniform(-coef_sample_width/2, coef_sample_width/2) for _ in range(number_features)] 
         random_fct_idx = [np.random.randint(0, len(function_indices.keys())) for _ in range(number_features)] 
         
-        def p_assigned_to_site(X, T, eps):
+        def p_assigned_to_site(X, T,eps):
             result = 0
             for j in range(number_features-1):
                 result += selected_features_for_subsampling[j] * random_coefs[j] * function_indices[random_fct_idx[j]](X[j])
             # here i use added_T_coef * random_coefs to increase importance of T
             result +=  added_T_coef * random_coefs[-1] *  function_indices[random_fct_idx[-1]](T) # T always selected in the end
-            return sigmoid(result + eps)
+            return sigmoid(result)
         
 
         if created_sites==0:

@@ -16,6 +16,7 @@ max_sample_size_cand : 500
 host_sample_size : 400 
 host_test_size : 2000
 desired_initial_sample_size : 1.e+5
+coef_sample_width : 5
 
 added_T_coef : 40 # to increase importance of T
 
@@ -35,6 +36,7 @@ model_param:
   
   GP:
     run: True
+    max_gp_iterations : 1000
 
   
   BART:
@@ -78,8 +80,8 @@ model_param:
       Nmin : 10
       mtry_pr : 0 # default 0 seems to be 'all'
       mtry_trt : 0 
-      tau_pr : 0.003  #0.6 * np.var(y) / /NUM_TREES_PR
-      tau_trt : 0.003 #0.1 * np.var(y) / /NUM_TREES_TRT
+      tau_pr : 0.6  #0.6 * np.var(y) / /NUM_TREES_PR
+      tau_trt : 0.1 #0.1 * np.var(y) / /NUM_TREES_TRT
       alpha_pr: 0.95 # shrinkage (splitting probability)
       beta_pr : 2 # shrinkage (tree depth)
       alpha_trt : 0.95 # shrinkage for treatment part
