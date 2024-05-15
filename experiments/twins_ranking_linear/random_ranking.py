@@ -140,6 +140,7 @@ with warnings.catch_warnings():
             prior_hyperparameters = {'beta_0': beta_0, 'sigma_0_sq': sigma_0_sq,"inv_cov_0":inv_cov_0}
 
             eig_results = {"EIG_obs_GP": [], 'EIG_caus_GP':[], " EIG_obs_lin":[], " EIG_caus_lin":[], "EIG_obs_bart":[], "EIG_caus_bart":[]}
+            print('data generated')
 
             
             if cfg["model_param"]["Linear"]["run"]:
@@ -511,7 +512,7 @@ with warnings.catch_warnings():
                 yaml.dump(correlation_with_true_rankings, f)
                 # except:
                 #     print("Error, skipping to next")
-                
+
             
 for keys in correlation_with_true_rankings.keys():                 
     results_df = pd.DataFrame(correlation_with_true_rankings[keys])
