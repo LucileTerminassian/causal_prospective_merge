@@ -126,7 +126,7 @@ def generating_random_sites_from(XandT, data_with_groundtruth, exp_parameters, a
         # binary bool vector representing selection for being an input of the sampling function
 
         if created_sites==0:
-            random_coefs = [np.random.uniform(0, 0) for _ in range(number_features)] 
+            random_coefs = [np.random.uniform(-coef_sample_width/2, coef_sample_width/2) for _ in range(number_features)] 
         else:
             random_coefs = [np.random.uniform(-coef_sample_width/2, coef_sample_width/2) for _ in range(number_features)] 
             
