@@ -124,7 +124,12 @@ def generating_random_sites_from(XandT, data_with_groundtruth, exp_parameters, a
         
         selected_features_for_subsampling = np.random.randint(2, size = number_features) 
         # binary bool vector representing selection for being an input of the sampling function
-        random_coefs = [np.random.uniform(-coef_sample_width/2, coef_sample_width/2) for _ in range(number_features)] 
+
+        if created_sites==0:
+            random_coefs = [np.random.uniform(0, 0) for _ in range(number_features)] 
+        else:
+            random_coefs = [np.random.uniform(-coef_sample_width/2, coef_sample_width/2) for _ in range(number_features)] 
+            
         random_fct_idx = [np.random.randint(0, len(function_indices.keys())) for _ in range(number_features)] 
         
         def p_assigned_to_site(X, T,eps):

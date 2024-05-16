@@ -13,7 +13,7 @@ functions:
 
   # reciprocal configuration
   reciprocal_method: "NR"
-  reciprocal_nr_iters: 10
+  reciprocal_nr_iters: 100
   reciprocal_log_iters: 1
   reciprocal_all_pos: True
   reciprocal_initial: null
@@ -27,7 +27,7 @@ functions:
   sigmoid_tanh_terms: 32
 
   # log configuration
-  log_iterations: 2
+  log_iterations: 100
   log_exp_iterations: 8
   log_order: 8
 
