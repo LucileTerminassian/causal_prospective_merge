@@ -209,28 +209,28 @@ class CMGP:
         else:
             Feature_names = [0]
 
-        Dataset0 = Dataset[Dataset["T"] == 0].copy()
-        Dataset1 = Dataset[Dataset["T"] == 1].copy()
-        neigh0 = KNeighborsRegressor(n_neighbors=10)
-        neigh1 = KNeighborsRegressor(n_neighbors=10)
-        neigh0.fit(Dataset0[Feature_names], Dataset0["Y"])
-        neigh1.fit(Dataset1[Feature_names], Dataset1["Y"])
-        Dataset["Yk0"] = neigh0.predict(Dataset[Feature_names])
-        Dataset["Yk1"] = neigh1.predict(Dataset[Feature_names])
-        Dataset0["Yk0"] = Dataset.loc[Dataset["T"] == 0, "Yk0"]
-        Dataset0["Yk1"] = Dataset.loc[Dataset["T"] == 0, "Yk1"]
-        Dataset1["Yk0"] = Dataset.loc[Dataset["T"] == 1, "Yk0"]
-        Dataset1["Yk1"] = Dataset.loc[Dataset["T"] == 1, "Yk1"]
+        # Dataset0 = Dataset[Dataset["T"] == 0].copy()
+        # Dataset1 = Dataset[Dataset["T"] == 1].copy()
+        # neigh0 = KNeighborsRegressor(n_neighbors=10)
+        # neigh1 = KNeighborsRegressor(n_neighbors=10)
+        # neigh0.fit(Dataset0[Feature_names], Dataset0["Y"])
+        # neigh1.fit(Dataset1[Feature_names], Dataset1["Y"])
+        # Dataset["Yk0"] = neigh0.predict(Dataset[Feature_names])
+        # Dataset["Yk1"] = neigh1.predict(Dataset[Feature_names])
+        # Dataset0["Yk0"] = Dataset.loc[Dataset["T"] == 0, "Yk0"]
+        # Dataset0["Yk1"] = Dataset.loc[Dataset["T"] == 0, "Yk1"]
+        # Dataset1["Yk0"] = Dataset.loc[Dataset["T"] == 1, "Yk0"]
+        # Dataset1["Yk1"] = Dataset.loc[Dataset["T"] == 1, "Yk1"]
 
-        a0 = np.sqrt(np.mean((Dataset0["Y"] - np.mean(Dataset0["Y"])) ** 2))
-        a1 = np.sqrt(np.mean((Dataset1["Y"] - np.mean(Dataset1["Y"])) ** 2))
-        b0 = np.mean(
-            (Dataset["Yk0"] - np.mean(Dataset["Yk0"]))
-            * (Dataset["Yk1"] - np.mean(Dataset["Yk1"]))
-        ) / (a0 * a1)
-        b1 = b0
-        s0 = np.sqrt(np.mean((Dataset0["Y"] - Dataset0["Yk0"]) ** 2)) / a0
-        s1 = np.sqrt(np.mean((Dataset1["Y"] - Dataset1["Yk1"]) ** 2)) / a1
+        # a0 = np.sqrt(np.mean((Dataset0["Y"] - np.mean(Dataset0["Y"])) ** 2))
+        # a1 = np.sqrt(np.mean((Dataset1["Y"] - np.mean(Dataset1["Y"])) ** 2))
+        # b0 = np.mean(
+        #     (Dataset["Yk0"] - np.mean(Dataset["Yk0"]))
+        #     * (Dataset["Yk1"] - np.mean(Dataset["Yk1"]))
+        # ) / (a0 * a1)
+        # b1 = b0
+        # s0 = np.sqrt(np.mean((Dataset0["Y"] - Dataset0["Yk0"]) ** 2)) / a0
+        # s1 = np.sqrt(np.mean((Dataset1["Y"] - Dataset1["Yk1"]) ** 2)) / a1
         # `````````````````````````````````````````````````````
         # self.model.sum.ICM0.rbf.lengthscale = 10 * np.ones(self.dim)
         # self.model.sum.ICM1.rbf.lengthscale = 10 * np.ones(self.dim)
@@ -246,10 +246,10 @@ class CMGP:
         # self.model.sum.ICM0.B.kappa[0] = a0 ** 2
         # self.model.sum.ICM0.B.kappa[1] = 1e-4
         # self.model.sum.ICM1.B.kappa[0] = 1e-4
-        # self.model.sum.ICM1.B.kappa[1] = a1 ** 2
+        # # self.model.sum.ICM1.B.kappa[1] = a1 ** 2
 
-        self.model.mixed_noise.Gaussian_noise_0.variance = s0 ** 2
-        self.model.mixed_noise.Gaussian_noise_1.variance = s1 ** 2
+        # self.model.mixed_noise.Gaussian_noise_0.variance = s0 ** 2
+        # self.model.mixed_noise.Gaussian_noise_1.variance = s1 ** 2
 
 class BayesianLinearRegression:
     def __init__(self, prior_hyperparameters, model="linear_reg"):
