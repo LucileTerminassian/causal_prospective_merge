@@ -303,7 +303,7 @@ with warnings.catch_warnings():
 
                     Dataset["Y"] = Y_merged
                     Dataset["T"] = T_merged
-                    dim = 26
+                    dim = len(X_host_test[0])
 
                     # if self.dim > 1:
                     Feature_names = list(range(dim))
