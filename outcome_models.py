@@ -924,7 +924,7 @@ class CausalGP:
         n_1,n_0 = len(X1),len(X0)
 
         sign, logdet = np.linalg.slogdet(Sigma_1+self.min_var*np.eye(Sigma_1.shape[0]))
-        return 0.5*(logdet - n_0 * np.log(self.model.model.likelihood[0]+self.min_var)) - n_1 * np.log(self.model.model.likelihood[1]+self.min_var)
+        return 0.5*(logdet - n_0 * np.log(self.model.model.likelihood[0]+self.min_var) - n_1 * np.log(self.model.model.likelihood[1]+self.min_var))
     
     def causal_EIG_closed_form(self,X,T,holdout_X = None):
 
