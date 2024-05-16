@@ -10,6 +10,7 @@ binary_outcome: False
 num_repeats: 30
 number_of_candidate_sites : 30
 min_treat_group_size: 50
+threshold_ptreated : None
 
 min_sample_size_cand : 300 
 max_sample_size_cand : 500
@@ -17,6 +18,7 @@ host_sample_size : 400
 host_test_size : 2000
 desired_initial_sample_size : 1.e+4
 coef_sample_width : 5
+
 
 added_T_coef : 50 # to increase importance of T
 
