@@ -111,8 +111,8 @@ class CMGP:
         y1 = np.reshape(np.array(Dataset1["Y"].copy()), (len(Dataset1), 1))
 
         # Create an instance of a GPy Coregionalization model
-        K0 = GPy.kern.RBF(self.dim)
-        K1 = GPy.kern.RBF(self.dim)
+        K0 = GPy.kern.RBF(self.dim,ARD=True)
+        K1 = GPy.kern.RBF(self.dim,ARD=True)
 
         kernel_dict = {
             "CMGP": GPy.util.multioutput.LCM(
