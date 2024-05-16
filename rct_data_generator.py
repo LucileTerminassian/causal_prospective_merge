@@ -113,7 +113,7 @@ def generating_random_sites_from(XandT, data_with_groundtruth, exp_parameters, a
 
     while created_sites < number_of_candidate_sites : # inforce + 1 cause we also subsample a host site
 
-        np.random.seed(np.random.randint(10000))
+        # np.random.seed(np.random.randint(10000))
         
         selected_features_for_subsampling = np.random.randint(2, size = number_features) 
         # binary bool vector representing selection for being an input of the sampling function
@@ -359,7 +359,7 @@ def subsample_one_dataset(
 ) -> pd.DataFrame:
     if sample_size > XandT.shape[0]:
         raise ValueError("sample_size > n_global")
-    np.random.seed(seed)
+    # np.random.seed(seed)
 
 
     data = pd.DataFrame(index=range(sample_size), columns=XandT.columns, dtype=float) 
