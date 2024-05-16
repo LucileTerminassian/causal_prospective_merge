@@ -111,12 +111,12 @@ class CMGP:
         y1 = np.reshape(np.array(Dataset1["Y"].copy()), (len(Dataset1), 1))
 
         # Create an instance of a GPy Coregionalization model
-        K0 = GPy.kern.RBF(self.dim, ARD=True)
-        K1 = GPy.kern.RBF(self.dim, ARD=True)
+        K0 = GPy.kern.RBF(self.dim)
+        K1 = GPy.kern.RBF(self.dim)
 
         kernel_dict = {
             "CMGP": GPy.util.multioutput.LCM(
-                input_dim=self.dim, num_outputs=self.dim_outcome, kernels_list=[K0, K1]
+                input_dim=self.dim, num_outputs=self.dim_outcome, kernels_list=[K0,K1]
             ),
             "NSGP": GPy.util.multioutput.ICM(
                 input_dim=self.dim, num_outputs=self.dim_outcome, kernel=K0
@@ -232,21 +232,21 @@ class CMGP:
         s0 = np.sqrt(np.mean((Dataset0["Y"] - Dataset0["Yk0"]) ** 2)) / a0
         s1 = np.sqrt(np.mean((Dataset1["Y"] - Dataset1["Yk1"]) ** 2)) / a1
         # `````````````````````````````````````````````````````
-        self.model.sum.ICM0.rbf.lengthscale = 10 * np.ones(self.dim)
-        self.model.sum.ICM1.rbf.lengthscale = 10 * np.ones(self.dim)
+        # self.model.sum.ICM0.rbf.lengthscale = 10 * np.ones(self.dim)
+        # self.model.sum.ICM1.rbf.lengthscale = 10 * np.ones(self.dim)
 
-        self.model.sum.ICM0.rbf.variance = 1
-        self.model.sum.ICM1.rbf.variance = 1
-        self.model.sum.ICM0.B.W[0] = b0
-        self.model.sum.ICM0.B.W[1] = b0
+        # self.model.sum.ICM0.rbf.variance = 1
+        # self.model.sum.ICM1.rbf.variance = 1
+        # self.model.sum.ICM0.B.W[0] = b0
+        # self.model.sum.ICM0.B.W[1] = b0
 
-        self.model.sum.ICM1.B.W[0] = b1
-        self.model.sum.ICM1.B.W[1] = b1
+        # self.model.sum.ICM1.B.W[0] = b1
+        # self.model.sum.ICM1.B.W[1] = b1
 
-        self.model.sum.ICM0.B.kappa[0] = a0 ** 2
-        self.model.sum.ICM0.B.kappa[1] = 1e-4
-        self.model.sum.ICM1.B.kappa[0] = 1e-4
-        self.model.sum.ICM1.B.kappa[1] = a1 ** 2
+        # self.model.sum.ICM0.B.kappa[0] = a0 ** 2
+        # self.model.sum.ICM0.B.kappa[1] = 1e-4
+        # self.model.sum.ICM1.B.kappa[0] = 1e-4
+        # self.model.sum.ICM1.B.kappa[1] = a1 ** 2
 
         self.model.mixed_noise.Gaussian_noise_0.variance = s0 ** 2
         self.model.mixed_noise.Gaussian_noise_1.variance = s1 ** 2
@@ -872,14 +872,15 @@ class BayesianCausalForest:
 
 class CausalGP:
 
-    def __init__(self,max_gp_iterations=100,min_var=0.0) -> None:
+    def __init__(self,max_gp_iterations=100,min_var=0.0,mode = "CMGP") -> None:
         self.max_gp_iterations = max_gp_iterations
         self.model = None
+        self.mode = mode
         self.min_var = min_var
 
     def fit(self,X_train,T_train,Y_train):
 
-        self.model = CMGP(X_train, T_train, Y_train, max_gp_iterations = self.max_gp_iterations)
+        self.model = CMGP(X_train, T_train, Y_train, max_gp_iterations = self.max_gp_iterations,mode=self.mode)
 
         self.X0_train =  np.array(
                 np.hstack([X_train, np.zeros_like(X_train[:, 1].reshape((len(X_train[:, 1]), 1)))])

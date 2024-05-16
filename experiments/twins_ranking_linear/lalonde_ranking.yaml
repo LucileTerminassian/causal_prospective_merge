@@ -37,7 +37,7 @@ model_param:
   GP:
     run: False
     max_gp_iterations : 1000
-
+    mode : NSGP
   
   BART:
     run: False

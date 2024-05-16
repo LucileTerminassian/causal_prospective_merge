@@ -89,6 +89,7 @@ exp_parameters = {'number_of_candidate_sites': number_of_candidate_sites+1,
 causal_param_first_index = power_x*np.shape(XandT)[1]
 
 max_gp_iterations = cfg["model_param"]["GP"]["max_gp_iterations"]
+gp_mode = cfg["model_param"]["GP"]["mode"]
 
 correlation_with_true_rankings={}
 
@@ -157,7 +158,7 @@ with warnings.catch_warnings():
             
             if cfg["model_param"]["GP"]["run"]:
 
-                cGP = CausalGP()
+                cGP = CausalGP(max_gp_iterations=max_gp_iterations,mode=gp_mode)
                 X_host = host.drop(columns=["Y","T"]).iloc[:,:causal_param_first_index].values
                 T_host = host["T"].values.astype(int)
                 Y_host = host["Y"].values
@@ -334,7 +335,7 @@ with warnings.catch_warnings():
                     }
 
                     model = GPy.models.GPCoregionalizedRegression(
-                        X_list=[X0, X1], Y_list=[y0, y1], kernel=kernel_dict["CMGP"]
+                        X_list=[X0, X1], Y_list=[y0, y1], kernel=kernel_dict["NSGP"]
                     )
                     
                     model.kern = cGP.model.model.kern
