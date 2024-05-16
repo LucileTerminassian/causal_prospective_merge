@@ -47,7 +47,8 @@ with open(args['--cfg'], "r") as f:
 data_path = main_dir+"/"
 data_name = cfg["data_name"]
 binary_outcome = cfg["binary_outcome"]
-data_with_groundtruth, x, t, y = get_data(data_name, data_path)
+th = cfg['threshold_ptreated']
+data_with_groundtruth, x, t, y = get_data(data_name, data_path, th)
 XandT = pd.concat([x,t], axis=1)
 #data_with_groundtruth.drop(columns=['Y','y0','y1','ite'])
 

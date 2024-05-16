@@ -5,8 +5,9 @@ from sklearn.preprocessing import OneHotEncoder
 from typing import Union, List
 from causallib import datasets
 from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
 
-def get_data(dataset: str, path: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+def get_data(dataset: str, path: str, th = None) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
     """
     Get the data for the specified dataset.
 
@@ -68,26 +69,17 @@ def get_data(dataset: str, path: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.Se
         data = pd.read_csv( path+ "data/lalonde_cps_sample0.csv")
         data.dropna(inplace=True)
         data.rename(columns = {'t': 'T', 'y': 'Y'}, inplace=True)
+        if th is not None:
+            x = data.drop(columns=["y0", "y1", "ite", "Y", "T"])
+            logistic_model = LogisticRegression()
+            logistic_model.fit(x, data['T'])
+            propensity_scores = logistic_model.predict_proba(x)[:, 1]
+            data.loc[propensity_scores > th, 'T'] = 1
+            print('portion of treated is '+str(np.sum(data['T'])/len(data['T'])))
         x = data.drop(columns=["y0", "y1", "ite", "Y", "T"])
         t = data["T"]
         y = data["Y"]
 
-
-    # elif dataset == "acic":
-    #     data = pd.read_csv(path + "data/acic_zymu_174570858.csv")
-    #     x = pd.read_csv(path + "data/acic_x.csv")
-    #     t = data["z"]
-    #     y = data["y0"]
-    #     idx_to_change = data.loc[data["z"] == 1].index.to_list()
-    #     for idx in idx_to_change:
-    #         y.loc[idx] = data["y1"].loc[idx]
-    #     y = y.rename("y")
-    #     one_hot = OneHotEncoder(drop="first").fit(x[["x_2", "x_21", "x_24"]])
-    #     new_data = pd.DataFrame(
-    #         one_hot.transform(x[["x_2", "x_21", "x_24"]]).toarray(),  # type: ignore
-    #     )
-    #     x = x.drop(columns=["x_2", "x_21", "x_24"])
-    #     x = pd.concat([x, new_data], axis=1)
     else:
         raise ValueError(f"Dataset {dataset} not recognized")
     
