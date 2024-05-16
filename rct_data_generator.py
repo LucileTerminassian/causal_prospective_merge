@@ -73,9 +73,12 @@ def get_data(dataset: str, path: str, th = None) -> tuple[pd.DataFrame, pd.DataF
             x = data.drop(columns=["y0", "y1", "ite", "Y", "T"])
             logistic_model = LogisticRegression()
             logistic_model.fit(x, data['T'])
+            print(data.iloc[:50,:])
             propensity_scores = logistic_model.predict_proba(x)[:, 1]
             data.loc[propensity_scores > th, 'T'] = 1
             print('portion of treated is '+str(np.sum(data['T'])/len(data['T'])))
+            print(data.iloc[:50,:])
+        data.reindex()
         x = data.drop(columns=["y0", "y1", "ite", "Y", "T"])
         t = data["T"]
         y = data["Y"]
