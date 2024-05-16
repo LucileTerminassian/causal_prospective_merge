@@ -76,7 +76,7 @@ def get_data(dataset: str, path: str, th = None) -> tuple[pd.DataFrame, pd.DataF
             propensity_scores = logistic_model.predict_proba(x)[:, 1]
             data.loc[propensity_scores > th, 'T'] = 1
             print('portion of treated is '+str(np.sum(data['T'])/len(data['T'])))
-        data.reindex()
+        data['Y'] = data['y1'] * data['T'] + data['y0'] * (1 - data['T'])
         x = data.drop(columns=["y0", "y1", "ite", "Y", "T"])
         t = data["T"]
         y = data["Y"]
