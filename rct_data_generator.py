@@ -421,7 +421,7 @@ def generate_data_varying_sample_size(
             design_data_host, design_data_comp = subsample_two_complementary_datasets(
                 XandT=XandT,
                 f_assigned_to_host=data_parameters["p_assigned_to_host"],  # host?
-                n_host=data_parameters["n_host"],
+                n_host=data_parameters["n_host_test_included"],
                 n_complementary=data_parameters["fixed_n_complementary"],
                 power_x=power_x,
                 power_x_t=power_x_t,
