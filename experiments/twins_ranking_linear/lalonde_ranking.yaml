@@ -46,8 +46,8 @@ model_param:
 
     prior_hyperparameters:
       sigma_0_sq : 1
-      p_categorical_pr: 19
-      p_categorical_trt : 19
+      p_categorical_pr: 5
+      p_categorical_trt : 5
 
     predictive_model_parameters:
       parallel : True 
