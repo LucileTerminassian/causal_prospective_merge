@@ -7,14 +7,14 @@
 
 data_name: 'lalonde'
 binary_outcome: False
-num_repeats: 20
-number_of_candidate_sites : 30
+num_repeats: 2
+number_of_candidate_sites : 10
 min_treat_group_size: 50
 threshold_ptreated : 0.03
 
 min_sample_size_cand : 600 
 max_sample_size_cand : 1000
-host_sample_size : 1000 
+host_sample_size : 800 
 host_test_size : 2000
 desired_initial_sample_size : 1.e+4
 coef_sample_width : 5
@@ -42,7 +42,7 @@ model_param:
     mode : NSGP
   
   BART:
-    run: False
+    run: True
 
     prior_hyperparameters:
       sigma_0_sq : 1
