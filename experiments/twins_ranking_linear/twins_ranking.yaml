@@ -8,13 +8,13 @@
 data_name: 'twins'
 binary_outcome: True
 num_repeats: 20 
-number_of_candidate_sites : 30 
-min_treat_group_size: 20
+number_of_candidate_sites : 10 
+min_treat_group_size: 50
 threshold_ptreated : None
 
-min_sample_size_cand : 300 
-max_sample_size_cand : 500 
-host_sample_size : 400 
+min_sample_size_cand : 600 
+max_sample_size_cand : 800 
+host_sample_size : 600 
 host_test_size : 2000
 desired_initial_sample_size : 1.e+5
 coef_sample_width : 5
