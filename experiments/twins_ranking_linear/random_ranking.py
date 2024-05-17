@@ -251,8 +251,7 @@ with warnings.catch_warnings():
 
                     learner = Ridge(fit_intercept=True)
                     learner.fit(y=Y_merged, X=XandT_merged) # we fit on merged datasets
-                    
-                    
+                    print(len(X_one))
                     pred_cate = learner.predict(X_one)-learner.predict(X_zero)
 
                     merged_mse_models["lin"] = merged_mse_models.get("lin",[]) + [(mean_squared_error(true_cate, pred_cate))]
