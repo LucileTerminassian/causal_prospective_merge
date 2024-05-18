@@ -7,7 +7,7 @@
 
 data_name: 'lalonde'
 binary_outcome: False
-num_repeats: 10
+num_repeats: 20
 number_of_candidate_sites : 10
 min_treat_group_size: 50
 threshold_ptreated : 0.03
@@ -36,13 +36,13 @@ model_param:
     sigma_rand_error : 1
   
   GP:
-    run: False
+    run: True
     max_gp_iterations : 1000
     max_gp_iterations_test : 1000
     mode : NSGP
   
   BART:
-    run: False
+    run: True
 
     prior_hyperparameters:
       sigma_0_sq : 1
