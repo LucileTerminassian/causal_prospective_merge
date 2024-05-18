@@ -7,19 +7,19 @@
 
 data_name: 'lalonde'
 binary_outcome: False
-num_repeats: 20
+num_repeats: 10
 number_of_candidate_sites : 10
 min_treat_group_size: 50
 threshold_ptreated : 0.03
 
-min_sample_size_cand : 600 
-max_sample_size_cand : 1000
-host_sample_size : 800 
+min_sample_size_cand : 200 
+max_sample_size_cand : 400 #600-1000 and 400 works ok
+host_sample_size : 400 
 host_test_size : 2000
 desired_initial_sample_size : 1.e+4
 coef_sample_width : 5
 
-added_T_coef : 50 # to increase importance of T
+added_T_coef : 20 # was 50
 
 outcome_function : null
 
@@ -30,7 +30,7 @@ std_true_y : 1
 model_param:
 
   Linear:
-    run: False
+    run: True
     power_x : 1
     power_x_t : 1
     sigma_rand_error : 1
@@ -42,7 +42,7 @@ model_param:
     mode : NSGP
   
   BART:
-    run: True
+    run: False
 
     prior_hyperparameters:
       sigma_0_sq : 1

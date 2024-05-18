@@ -244,16 +244,136 @@ def compare_to_ground_truth(results_dict, true_cate_ranking, eig_ranking, merged
     else:
         for val in k:
             results_dict['precision_at_'+str(val)] = results_dict.get('precision_at_'+str(val),[]) + [precision_at_k(true_cate_ranking, topn_eig_ranking, k=val)]
-    
-    # results_dict['recall_at_k'].append(recall_at_k(true_cate_ranking, topn_eig_ranking, k=k[0]))
-    # if type(k) == int:
-    #     results_dict['recall_at_k'].append(recall_at_k(true_cate_ranking, topn_eig_ranking, k=k))
-    # else:
-    #     for val in k:
-    #         results_dict['recall_at_'+str(val)].append(recall_at_k(true_cate_ranking, topn_eig_ranking, k=val))
-    # results_dict['mean average precision'].append(mean_average_precision(topn_true_cate_ranking, topn_eig_ranking, k=k[0]))
-    # results_dict['ndcg'].append(ndcg(topn_true_cate_ranking, topn_eig_ranking, k[0]))
-    # results_dict['rank corr eig'].append(np.corrcoef(topn_true_cate_ranking, topn_eig_ranking)[0, 1])
-    # results_dict['mean reciprocal rank'].append(mrr(topn_true_cate_ranking, topn_eig_ranking))
 
     return results_dict
+
+def turn_into_diff(arr):
+    n, d = np.shape(arr)[0], np.shape(arr)[1]
+    result = np.zeros((n//2, d))
+    for i in range (n//2):
+        result[i,:]=arr[2*i,:]-arr[(2*i) +1,:]
+    return result
+
+from scipy.interpolate import interp1d
+from mpl_axes_aligner import align
+
+## below is a plotting function tailored to the illustrative experiment
+
+def plot_dict_illustrative(
+    x,
+    data_dict: dict,
+    axis_names: list,
+    mean_color_dict: dict = None,
+    std_color_dict: dict = None,
+    dict_additional_plots: Union [dict, None] = None,
+    text: Union [str, None] = None,
+    title: Union[str, None] = None,
+    save: Union[str, None] = None,
+    second_axis: Union[dict, None] = None,
+):
+
+    fig, ax1 = plt.subplots(figsize=(13, 9))
+
+    for label, arr in data_dict.items():
+
+        mean_color = mean_color_dict[label] if mean_color_dict is not None else "blue"
+        std_color = std_color_dict[label] if std_color_dict is not None else "blue"
+
+        mean_data = np.mean(arr, axis=0)
+        std_data = np.std(arr, axis=0)
+
+        if label.endswith('mcmc'):
+            interp_mean_func = interp1d(x, mean_data, kind='linear')
+            interp_std_func = interp1d(x, std_data, kind='linear')
+            x_interp = np.linspace(min(x), max(x), num=len(mean_data)*3)  # Fine-grained x values for interpolation
+            mean_data = interp_mean_func(x_interp)
+            std_data = interp_std_func(x_interp)
+            ax1.plot(x_interp, mean_data, label=label, color=mean_color, linestyle='--', linewidth=2.2)
+            ax1.fill_between(
+                x_interp, 
+                mean_data - std_data, 
+                mean_data + std_data, 
+                color=std_color, alpha=0.25,
+                linewidth=1.7)
+        else:
+            ax1.plot(x, mean_data, label=label, color=mean_color, linewidth=2.2)
+            ax1.fill_between(x, 
+                mean_data - std_data, 
+                mean_data + std_data, 
+                color=std_color, alpha=0.25, linewidth=2)
+            
+    if dict_additional_plots is not None:
+        for key, arr in dict_additional_plots.items():
+            ax1.plot(x, arr, label=key, linewidth=2.0)
+
+    ax1.set_ylabel(axis_names[1], fontsize=25)
+    ax1.set_xlabel(axis_names[0], fontsize=33)
+    ax1.tick_params(axis='y', labelsize=18)
+    ax1.tick_params(axis='x', labelsize=18)
+    ax1.yaxis.set_label_coords(-0.085, 0.5)
+    #ax1.legend(loc='lower center', bbox_to_anchor=(0.5, -0.3), ncol=len(dict.keys())//2, fontsize=20)
+
+    if second_axis:
+        ax2 = ax1.twinx() 
+        for label, arr in second_axis.items():
+            ax2.plot(x, arr, label=label, color='darkblue', linewidth=2.2)
+        ax2.set_ylabel(axis_names[2], fontsize=24, rotation=270, labelpad=15)
+        ax2.tick_params(axis='y', labelsize=18)
+        #ax2.legend(loc='lower left', bbox_to_anchor=(0.14, 0.15), fontsize=20)
+        ax2.yaxis.set_label_coords(1.13, 0.5)
+    
+    ax2.set_yticks([-0.1, -0.05, 0, 0.05])
+
+
+    # Adjust the plotting range of two y axes
+    pos = 0.5  # Position the two origins are aligned
+    align.yaxes(ax1, 0, ax2, 0, 0.65)
+
+    handles1, labels1 = ax1.get_legend_handles_labels()
+    handles2, labels2 = ax2.get_legend_handles_labels()
+
+    # Define the x-axis ranges for the shaded areas
+    shaded_ranges = [(1, 1.25), (1.25, 1.75), (1.75, 2)]
+
+    # Add round text box with label at position (x, y)
+    ax1.text(1.15, -0.15, "1", fontsize=20, color='black', ha='center', va='center',
+            bbox=dict(boxstyle='round', facecolor='white', edgecolor='khaki'))
+    ax1.text(1.5, -0.6, "2", fontsize=20, color='black', ha='center', va='center',
+            bbox=dict(boxstyle='round', facecolor='white', edgecolor='grey'))
+    ax1.text(1.87, -0.4, "3", fontsize=20, color='black', ha='center', va='center',
+            bbox=dict(boxstyle='round', facecolor='white', edgecolor='cornflowerblue'))
+
+    # Define the colors for the shaded areas
+    background_colors = ['olive', 'lightgrey', 'lightsteelblue']
+
+    # Add shaded areas to the plot
+    for i, (x_start, x_end) in enumerate(shaded_ranges):
+        color = background_colors[i]
+        if color!= "olive":
+            ax1.axvspan(x_start, x_end, color=background_colors[i], alpha=0.3)
+        else:
+            ax1.axvspan(x_start, x_end, color=background_colors[i], alpha=0.08)
+    # Create a single legend with labels from both axes
+    fig.legend(handles=handles1 + handles2, labels=labels1 + labels2, \
+               loc='lower center', bbox_to_anchor=(0.5, -0.15), ncol=3, fontsize=24)   
+    
+    if title is not None:
+        fig.suptitle(title)
+
+    if text is not None:
+        fig.text(
+            0.5, -0.2, text, ha="center", va="center", transform=plt.gca().transAxes
+        )
+
+    
+    ax1.axhline(y=0, color='gray', linestyle='--', linewidth=1)
+
+    fig.tight_layout()
+
+    if save:
+        current_time = datetime.now().strftime("%H:%M:%S")
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        filename = f"{save}_{current_date}_{current_time}.pdf"
+        fig.savefig(filename, dpi=600, bbox_inches='tight')
+
+    plt.show()

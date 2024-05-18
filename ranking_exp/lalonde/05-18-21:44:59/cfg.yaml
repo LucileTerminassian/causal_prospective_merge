@@ -1,0 +1,83 @@
+added_T_coef: 40
+binary_outcome: false
+coef_sample_width: 5
+data_name: lalonde
+desired_initial_sample_size: 10000.0
+host_sample_size: 600
+host_test_size: 2000
+k:
+- 1
+- 3
+- 5
+- 10
+- 15
+- 20
+max_sample_size_cand: 1000
+min_sample_size_cand: 800
+min_treat_group_size: 50
+model_param:
+  BART:
+    conditional_model_param:
+      Nmin: 10
+      a_scaling: false
+      alpha_pr: 0.95
+      alpha_trt: 0.95
+      b_scaling: false
+      beta_pr: 2
+      beta_trt: 2
+      burnin: 100
+      max_depth: 250
+      mtry_pr: 0
+      mtry_trt: 0
+      num_cutpoints: 300
+      num_trees_pr: 200
+      parallel: true
+      standardize_target: true
+      tau_pr: 0.6
+      tau_trt: 0.1
+    predictive_model_parameters:
+      Nmin: 10
+      a_scaling: false
+      alpha_pr: 0.95
+      alpha_trt: 0.95
+      b_scaling: false
+      beta_pr: 2
+      beta_trt: 2
+      burnin: 100
+      max_depth: 250
+      mtry_pr: 0
+      mtry_trt: 0
+      num_cutpoints: 300
+      num_trees_pr: 200
+      num_trees_trt: 100
+      parallel: true
+      standardize_target: true
+      tau_pr: 0.003
+      tau_trt: 0.003
+    prior_hyperparameters:
+      p_categorical_pr: 5
+      p_categorical_trt: 5
+      sigma_0_sq: 1
+    run: false
+    sampling_parameters:
+      n_samples_inner_expectation_caus: 200
+      n_samples_inner_expectation_obs: 200
+      n_samples_outer_expectation_caus: 400
+      n_samples_outer_expectation_obs: 400
+  GP:
+    max_gp_iterations: 1000
+    max_gp_iterations_test: 1000
+    mode: NSGP
+    run: false
+  Linear:
+    power_x: 1
+    power_x_t: 1
+    run: true
+    sigma_rand_error: 1
+num_repeats: 10
+number_of_candidate_sites: 10
+outcome_function: null
+std_true_y: 1
+threshold_ptreated: 0.02
+top_n: null
+true_beta_great_0_prop: 0.9
