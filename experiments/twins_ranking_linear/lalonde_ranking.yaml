@@ -30,19 +30,19 @@ std_true_y : 1
 model_param:
 
   Linear:
-    run: True
+    run: False
     power_x : 1
     power_x_t : 1
     sigma_rand_error : 1
   
   GP:
-    run: True
+    run: False
     max_gp_iterations : 1000
     max_gp_iterations_test : 1000
     mode : NSGP
   
   BART:
-    run: False
+    run: True
 
     prior_hyperparameters:
       sigma_0_sq : 1
