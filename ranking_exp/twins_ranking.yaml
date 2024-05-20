@@ -7,7 +7,7 @@
 
 data_name: 'twins'
 binary_outcome: True
-num_repeats: 2
+num_repeats: 10
 number_of_candidate_sites : 10 
 min_treat_group_size: 50
 threshold_ptreated : None
