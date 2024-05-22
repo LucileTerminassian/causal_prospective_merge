@@ -1,3 +1,5 @@
-# causal_prospective_merge
+# Is merging worth it? Securely evaluating the  information gain for causal dataset acquisition
 
-For now, only open linear_simulations. It's the console you play from, the rest is utils functions for running the experiment
+For experiments relative to section 5.1, see 'illustrative_exp'
+For experiments relative to section 5.2, see 'ranking_exp'
+For experiments relative to section 5.3, see 'mpc_exp'
