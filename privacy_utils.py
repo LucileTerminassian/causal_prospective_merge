@@ -4,7 +4,73 @@ from crypten.config import cfg
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
+from tqdm import tqdm
+from scipy.stats import multivariate_normal
+torch.set_default_tensor_type(torch.FloatTensor)  # set the default to float32
 
+
+
+def posterior_mean(X, y, sigma_sq, cov_posterior_inv):
+    return 1 / sigma_sq * cov_posterior_inv @ ((X.T) @ y)
+
+
+def posterior_covariance_inv(X, sigma_sq, S0_inv):
+    return 1 / sigma_sq * X.T @ X + S0_inv
+
+def predictions_in_EIG_obs_form(Y_pred_vec, n_outer_expectation, m_inner_expectation):
+    """ "Gets samples in the correct form for EIG computation
+    Y_pred_vec: predictions from the model over many theta
+    n_outer_expectation: number of samples for outer expectation
+    m_inner_expectation: number of samples for inner expectation
+    """
+
+    if n_outer_expectation * (m_inner_expectation + 1) != len(Y_pred_vec):
+        assert "n * m must be the length of the pred vector"
+    predictions_list = []
+
+    for i in range(n_outer_expectation):
+        predictions_list.append(
+            (
+                Y_pred_vec[i],
+                Y_pred_vec[
+                    m_inner_expectation * i
+                    + n_outer_expectation : m_inner_expectation * (i + 1)
+                    + n_outer_expectation
+                ],
+            )
+        )
+    return predictions_list
+
+def predictions_in_EIG_causal_form(
+    pred_func,
+    theta_samples,
+    theta_sampling_function,
+    n_non_causal_expectation,
+    causal_param_first_index,
+):
+
+    paired_predictions = []
+
+    for theta in theta_samples:
+        theta_causal = theta[causal_param_first_index:]
+        thetas_samples_non_causal = theta_sampling_function(
+            theta_causal, n_non_causal_expectation
+        )
+        if type(theta_causal) == torch.Tensor:
+            predictions = [
+                pred_func(torch.concatenate([(theta_noncausal), (theta_causal)]))
+                for theta_noncausal in thetas_samples_non_causal
+            ]
+        else:
+            predictions = [
+                pred_func(
+                    np.concatenate([np.array(theta_noncausal), np.array(theta_causal)])
+                )
+                for theta_noncausal in thetas_samples_non_causal
+            ]
+        paired_predictions.append((pred_func(theta), predictions))
+
+    return paired_predictions
 
 def chol_LD_Crypten(crypt_PSD_mat):
 
@@ -296,6 +362,307 @@ def get_diff_private_sum_caus_EIG(X_host,X_cand,cov,causal_param_first_index,eps
     _,logdet_EIG = np.linalg.slogdet(XX_cand + XX_host + cov[causal_param_first_index:,causal_param_first_index:])
     return logdet_EIG
 # Functions copied below in correct form for python 3.7
+
+def log_liklihood_crypt(y_true,y_pred,sigma=1,decrypt = False):
+
+    if decrypt:
+        return -(0.5*(((y_true-y_pred) @ (y_true-y_pred))).div(sigma)).get_plain_text()
+    else:
+        return -(0.5*(((y_true-y_pred) @ (y_true-y_pred))).div(sigma))
+
+def log_liklihood_torch(y_true,y_pred,sigma=1,decrypt = False):
+
+    return -(0.5*(((y_true-y_pred) @ (y_true-y_pred))).div(sigma))   
+
+def log_sum_exp_crypt(crypt_array,decrypt = False):
+    crypt_array_max = crypt_array.max()
+    crypt_array_normalised = crypt_array - crypt_array_max
+    if decrypt:
+        return (((crypt_array_normalised.exp()).sum()).log()+ crypt_array_max).get_plain_text()
+    else:
+        crypt_array_max = crypt_array.max()
+        crypt_array_normalised = crypt_array - crypt_array_max
+        return ((crypt_array_normalised.exp()).sum()).log()+ crypt_array_max
+
+def log_posterior_predictive_crypten(y, y_pred_theta_samples, sigma = 1,decrypt = False):
+
+    log_like_list = crypten.mpc.MPCTensor(torch.zeros(len(y_pred_theta_samples)))
+    for i in range(len(y_pred_theta_samples)):
+        log_like_list[i] = log_liklihood_crypt(y,y_pred_theta_samples[i],sigma=sigma)
+    
+    if decrypt:
+        return (log_sum_exp_crypt(log_like_list) - torch.log(torch.tensor(len(y_pred_theta_samples)))).get_plain_text()
+    else:
+        return log_sum_exp_crypt(log_like_list) - torch.log(torch.tensor(len(y_pred_theta_samples)))
+
+def log_posterior_predictive_torch(y, y_pred_theta_samples, sigma = 1):
+
+    log_like_list =torch.zeros(len(y_pred_theta_samples))
+    for i in range(len(y_pred_theta_samples)):
+        log_like_list[i] = log_liklihood_torch(y,y_pred_theta_samples[i],sigma=sigma)
+    
+    return torch.logsumexp(log_like_list,dim=0) - torch.log(torch.tensor(len(y_pred_theta_samples)))
+    
+
+def calc_posterior_predictive_entropy_crypt(pred_list,normal_samples, sigma,decrypt = False):
+    # n_e = len(pred_list[0][0])  # old len(pred_list[0][0])
+
+    sample_list_crypten = crypten.mpc.MPCTensor(torch.zeros(len(pred_list)))
+    
+    for i,(y_pred, y_pred_multiple) in tqdm(enumerate(pred_list)):
+
+        y_sample = y_pred + normal_samples[i]
+        sample_list_crypten[i] = log_posterior_predictive_crypten(y_sample,y_pred_multiple,sigma=sigma)
+    if decrypt:
+        return -sample_list_crypten.mean().get_plain_text()
+
+    else:
+        return -sample_list_crypten.mean()
+
+def calc_posterior_predictive_entropy_torch(pred_list,normal_samples, sigma):
+
+    sample_list_crypten = torch.zeros(len(pred_list))
+    
+    for i,(y_pred, y_pred_multiple) in tqdm(enumerate(pred_list)):
+
+        y_sample = y_pred + normal_samples[i]
+        sample_list_crypten[i] = log_posterior_predictive_torch(y_sample,y_pred_multiple,sigma=sigma)
+    return -sample_list_crypten.mean()
+
+
+def compute_EIG_obs_from_samples_crypt(pred_list,normal_samples, sigma):
+    n_e = len(pred_list[0][0])
+
+    return (calc_posterior_predictive_entropy_crypt(pred_list,normal_samples=normal_samples, sigma=sigma)).get_plain_text()
+
+    # return (calc_posterior_predictive_entropy_crypt(pred_list,normal_samples=normal_samples, sigma=sigma) - n_e / 2 * (
+    #     1 + np.log(2 * np.pi * sigma**2)
+    # )).get_plain_text()
+
+def compute_EIG_obs_from_samples_torch(pred_list,normal_samples, sigma):
+    n_e = len(pred_list[0][0])
+    return calc_posterior_predictive_entropy_torch(pred_list,normal_samples=normal_samples, sigma=sigma)
+    # return calc_posterior_predictive_entropy_torch(pred_list,normal_samples=normal_samples, sigma=sigma) - n_e / 2 * (1 + np.log(2 * np.pi * sigma**2))
+
+
+def compute_EIG_causal_from_samples_crypt(pred_list_unpaired, pred_list_paired,normal_samples, sigma):
+    """ " Function to calculate causal information gain"""
+    # n_e = len(pred_list_unpaired[0][0])  # old len(pred_list_unpaired[0][0])
+    # return calc_posterior_predictive_entropy(
+    #     pred_list_unpaired, sigma
+    # ) - calc_posterior_predictive_entropy(pred_list_paired, sigma)
+
+    sample_list_crypten = crypten.mpc.MPCTensor(torch.zeros(len(min(pred_list_unpaired,pred_list_paired))))
+
+    for i,((y_pred, y_pred_multiple_paired),(_,y_pred_multiple_unpaired)) in tqdm(enumerate(zip(pred_list_paired,pred_list_unpaired))):
+        y_sample = y_pred + normal_samples[i]
+        sample_list_crypten[i]  =   log_posterior_predictive_crypten(y_sample, y_pred_multiple_paired, sigma) - log_posterior_predictive_crypten(y_sample, y_pred_multiple_unpaired,sigma)
+    return sample_list_crypten.mean().get_plain_text()
+
+def compute_EIG_causal_from_samples_torch(pred_list_unpaired, pred_list_paired,normal_samples, sigma):
+    """ " Function to calculate causal information gain"""
+    # n_e = len(pred_list_unpaired[0][0])  # old len(pred_list_unpaired[0][0])
+    # return calc_posterior_predictive_entropy(
+    #     pred_list_unpaired, sigma
+    # ) - calc_posterior_predictive_entropy(pred_list_paired, sigma)
+
+    sample_list_crypten = torch.zeros(len(min(pred_list_unpaired,pred_list_paired)))
+
+    for i,((y_pred, y_pred_multiple_paired),(_,y_pred_multiple_unpaired)) in tqdm(enumerate(zip(pred_list_paired,pred_list_unpaired))):
+        y_sample = y_pred + normal_samples[i]
+        sample_list_crypten[i]  =   log_posterior_predictive_torch(y_sample, y_pred_multiple_paired, sigma) - log_posterior_predictive_torch(y_sample, y_pred_multiple_unpaired,sigma)
+    return sample_list_crypten.mean()
+
+
+class BayesianLinearRegressionCrypt:
+    def __init__(self, prior_hyperparameters, model="linear_reg"):
+        self.model = model
+        self.prior_hyperparameters = prior_hyperparameters
+        self._check_prior_hyperparameters()
+        self.sigma_0_sq = self.prior_hyperparameters["sigma_0_sq"]
+        self.inv_cov = self.prior_hyperparameters["inv_cov_0"]
+        self.beta = self.prior_hyperparameters["beta_0"]
+        self.causal_index = None
+        if type(self.inv_cov) == torch.Tensor:
+            self.cov = torch.inverse(self.inv_cov)
+        else:
+            self.cov = np.linalg.inv(self.inv_cov)
+        
+
+
+    def _check_prior_hyperparameters(self):
+
+        if not isinstance(self.prior_hyperparameters, dict):
+            raise ValueError("Prior hyperparameters should be a dictionary.")
+
+        if "beta_0" not in self.prior_hyperparameters:
+            raise ValueError("Prior hyperparameters should contain key 'beta_0'.")
+
+        # This should be a matrix of size pxp denoting the covariance in the prior
+        if "inv_cov_0" not in self.prior_hyperparameters:
+            raise ValueError("Prior hyperparameters should contain key 'inv_cov_0'.")
+
+        if "sigma_0_sq" not in self.prior_hyperparameters:
+            raise ValueError("Prior hyperparameters should contain key 'sigma_0_sq'.")
+
+        # Ensure std_squared_0 is a scalar
+        if not isinstance(self.prior_hyperparameters["sigma_0_sq"], (int, float)):
+            raise ValueError("sigma_0_sq should be a scalar.")
+
+    def fit(self, X, Y):
+
+        n, d = X.shape
+
+        sigma_0_sq = self.prior_hyperparameters["sigma_0_sq"]
+        inv_cov_0 = self.prior_hyperparameters["inv_cov_0"]
+        beta_0 = self.prior_hyperparameters["beta_0"]
+        if beta_0 is None or len(beta_0) != X.shape[1]:
+            raise ValueError("beta_0 should be a vector of length d.")
+
+        # Calculate covariance matrix of the posterior distribution
+        # old cov_matrix_posterior = np.linalg.inv(sigma_sq_inv_y * np.dot(X.T, X) + sigma_0_sq_inv * np.eye(X.shape[1]))
+        inv_cov_matrix_posterior = posterior_covariance_inv(
+            X, self.sigma_0_sq, self.inv_cov
+        )
+        if type(inv_cov_matrix_posterior) == torch.Tensor:
+            cov_matrix_posterior = torch.inverse(inv_cov_matrix_posterior)
+        else:
+            cov_matrix_posterior = np.linalg.inv(inv_cov_matrix_posterior)
+
+        # Calculate mean vector of the posterior distribution
+        # old beta_posterior = np.dot(np.dot(cov_matrix_posterior, X.T), Y) * sigma_sq_inv_y + np.dot(cov_matrix_posterior, beta_0)
+        beta_posterior = posterior_mean(X, Y, self.sigma_0_sq, cov_matrix_posterior)
+
+        # Prepare posterior parameters dictionary
+        dict_posterior_parameters = {
+            "posterior_mean": beta_posterior,
+            "posterior_cov_matrix": cov_matrix_posterior,
+        }
+
+        self.beta = beta_posterior
+        self.cov = cov_matrix_posterior
+        self.inv_cov = inv_cov_matrix_posterior
+
+        return dict_posterior_parameters
+
+    def posterior_sample(self, n_samples):
+        """ "Returns n samples from the posterior"""
+        mvn = multivariate_normal(mean=self.beta, cov=self.cov)
+        samples = mvn.rvs(n_samples, random_state=0)
+        if type(self.inv_cov) == torch.Tensor:
+            samples = torch.tensor(samples, dtype=torch.float64)
+        return samples
+
+    def set_causal_index(self, causal_index):
+        self.causal_index = causal_index
+
+    def return_conditional_sample_function(
+        self, conditioning_index, condition_after=True
+    ):
+        """ "Returns a function to sample from the conditional posterior"""
+
+        sigma_a = self.cov[:conditioning_index, :conditioning_index]
+        sigma_b = self.cov[conditioning_index:, conditioning_index:]
+        sigma_c = self.cov[:conditioning_index, conditioning_index:]
+
+        if condition_after:
+            conditional_cov = sigma_a - sigma_c @ sigma_b @ sigma_c.T
+
+        else:
+            conditional_cov = sigma_b - sigma_c.T @ sigma_b @ sigma_c
+
+        def conditional_sampling_func(conditioning_vec, n_samples):
+            if type(self.inv_cov) == torch.Tensor:
+                if condition_after:
+                    conditional_mean = self.beta[:conditioning_index] + sigma_c @ (
+                        torch.inverse(sigma_b)
+                        @ (conditioning_vec - self.beta[conditioning_index:])
+                    )
+                else:
+                    conditional_mean = self.beta[conditioning_index:] + sigma_c.T @ (
+                        torch.inverse(sigma_a)
+                        @ (conditioning_vec - self.beta[:conditioning_index])
+                    )
+
+                mvn = multivariate_normal(mean=conditional_mean, cov=conditional_cov)
+
+                return torch.tensor(
+                    mvn.rvs(n_samples, random_state=0), dtype=torch.float64
+                )
+            else:
+                if condition_after:
+                    conditional_mean = self.beta[:conditioning_index] + sigma_c @ (
+                        np.linalg.inv(sigma_b)
+                        @ (conditioning_vec - self.beta[conditioning_index:])
+                    )
+                else:
+                    conditional_mean = self.beta[conditioning_index:] + sigma_c.T @ (
+                        np.linalg.inv(sigma_a)
+                        @ (conditioning_vec - self.beta[:conditioning_index])
+                    )
+
+                mvn = multivariate_normal(mean=conditional_mean, cov=conditional_cov)
+
+                return mvn.rvs(n_samples, random_state=0)
+
+        return conditional_sampling_func
+
+    def samples_obs_EIG_comparison(
+        self, X, n_samples_outer_expectation, n_samples_inner_expectation
+    ):
+        if not hasattr(self,"posterior_samples"): 
+            n_samples = n_samples_outer_expectation * (n_samples_inner_expectation + 1)
+            self.posterior_samples = self.posterior_sample(n_samples=n_samples)
+            print("sampling done")
+        
+        predictions = self.posterior_samples @ X.T
+
+        print("predicted")
+        predictions_unpaired = predictions_in_EIG_obs_form(
+            predictions, n_samples_outer_expectation, n_samples_inner_expectation
+        )
+        normal_samples = torch.randn((len(predictions_unpaired),len(X)))
+
+        results_dict = {}
+        results_dict["torch"] = compute_EIG_obs_from_samples_torch(
+            predictions_unpaired,normal_samples, self.sigma_0_sq ** (1 / 2)
+        )
+        results_dict["crypt"] = compute_EIG_obs_from_samples_crypt(
+            predictions_unpaired,normal_samples, self.sigma_0_sq ** (1 / 2)
+        )
+        return results_dict
+
+    def samples_causal_EIG(
+        self, X, n_samples_outer_expectation, n_samples_inner_expectation
+    ):
+        
+        sample_func = self.return_conditional_sample_function(self.causal_index)
+        
+        if not hasattr(self,"posterior_samples"):
+            posterior_samples = self.posterior_sample(n_samples=n_samples_outer_expectation)
+        else: 
+            posterior_samples = self.posterior_samples[:n_samples_outer_expectation]
+
+        prediction_func = lambda beta: beta @ (X).T
+        
+        predictions_paired = predictions_in_EIG_causal_form(
+            pred_func=prediction_func,
+            theta_samples=posterior_samples,
+            theta_sampling_function=sample_func,
+            n_non_causal_expectation=n_samples_inner_expectation,
+            causal_param_first_index=self.causal_index,
+        )
+        print("conditional_sample_done")
+        n_samples = n_samples_outer_expectation * (n_samples_inner_expectation + 1)
+        posterior_samples = self.posterior_sample(n_samples=n_samples)
+        predicitions = posterior_samples @ X.T
+        predictions_unpaired = predictions_in_EIG_obs_form(
+            predicitions, n_samples_outer_expectation, n_samples_inner_expectation
+        )
+        return compute_EIG_causal_from_samples(
+            predictions_unpaired, predictions_paired, self.sigma_0_sq ** (1 / 2)
+        )
+
 
 
 def generate_design_matrix(
