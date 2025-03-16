@@ -12,10 +12,11 @@ This codebase implements the experiments from "[Is merging worth it? Securely ev
 #### Cite as
 
 ```
-@article{fawkes2024merging,
+@inproceedings{fawkes2025merging,
   title={Is merging worth it? Securely evaluating the information gain for causal dataset acquisition},
   author={Fawkes, Jake and Ter-Minassian, Lucile and Ivanova, Desi R. and Shalit, Uri and Holmes, Chris},
-  journal={AISTATS},
+  booktitle={International Conference on Artificial Intelligence and Statistics (AISTATS)},
+  organization={PMLR},
   year={2025}
 }
 ```
