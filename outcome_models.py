@@ -111,12 +111,12 @@ class CMGP:
         y1 = np.reshape(np.array(Dataset1["Y"].copy()), (len(Dataset1), 1))
 
         # Create an instance of a GPy Coregionalization model
-        K0 = GPy.kern.RBF(self.dim,ARD=True)
-        K1 = GPy.kern.RBF(self.dim,ARD=True)
+        K0 = GPy.kern.RBF(self.dim, ARD=True)
+        K1 = GPy.kern.RBF(self.dim, ARD=True)
 
         kernel_dict = {
             "CMGP": GPy.util.multioutput.LCM(
-                input_dim=self.dim, num_outputs=self.dim_outcome, kernels_list=[K0,K1]
+                input_dim=self.dim, num_outputs=self.dim_outcome, kernels_list=[K0, K1]
             ),
             "NSGP": GPy.util.multioutput.ICM(
                 input_dim=self.dim, num_outputs=self.dim_outcome, kernel=K0
@@ -251,6 +251,7 @@ class CMGP:
         # self.model.mixed_noise.Gaussian_noise_0.variance = s0 ** 2
         # self.model.mixed_noise.Gaussian_noise_1.variance = s1 ** 2
 
+
 class BayesianLinearRegression:
     def __init__(self, prior_hyperparameters, model="linear_reg"):
         self.model = model
@@ -264,8 +265,6 @@ class BayesianLinearRegression:
             self.cov = torch.inverse(self.inv_cov)
         else:
             self.cov = np.linalg.inv(self.inv_cov)
-        
-
 
     def _check_prior_hyperparameters(self):
 
@@ -397,11 +396,11 @@ class BayesianLinearRegression:
     def samples_obs_EIG(
         self, X, n_samples_outer_expectation, n_samples_inner_expectation
     ):
-        if not hasattr(self,"posterior_samples"): 
+        if not hasattr(self, "posterior_samples"):
             n_samples = n_samples_outer_expectation * (n_samples_inner_expectation + 1)
             self.posterior_samples = self.posterior_sample(n_samples=n_samples)
             print("sampling done")
-        
+
         predictions = self.posterior_samples @ X.T
         print("predicted")
         predictions_unpaired = predictions_in_EIG_obs_form(
@@ -415,16 +414,18 @@ class BayesianLinearRegression:
     def samples_causal_EIG(
         self, X, n_samples_outer_expectation, n_samples_inner_expectation
     ):
-        
+
         sample_func = self.return_conditional_sample_function(self.causal_index)
-        
-        if not hasattr(self,"posterior_samples"):
-            posterior_samples = self.posterior_sample(n_samples=n_samples_outer_expectation)
-        else: 
+
+        if not hasattr(self, "posterior_samples"):
+            posterior_samples = self.posterior_sample(
+                n_samples=n_samples_outer_expectation
+            )
+        else:
             posterior_samples = self.posterior_samples[:n_samples_outer_expectation]
 
         prediction_func = lambda beta: beta @ (X).T
-        
+
         predictions_paired = predictions_in_EIG_causal_form(
             pred_func=prediction_func,
             theta_samples=posterior_samples,
@@ -450,8 +451,8 @@ class BayesianCausalForest:
         prior_hyperparameters,
         predictive_model_parameters={},
         conditional_model_param={},
-        max_sample_num = 1000,
-        cond_max_samples_number = 20
+        max_sample_num=1000,
+        cond_max_samples_number=20,
     ):
         self.sigma_0_sq = prior_hyperparameters["sigma_0_sq"]
         self.p_categorical_pr = prior_hyperparameters["p_categorical_pr"]
@@ -464,8 +465,13 @@ class BayesianCausalForest:
         self.cond_max_samples_number = cond_max_samples_number
         self.model = None
         self.cond_models = None
-        self.pred_model_param["tau_pr"],self.pred_model_param["tau_trt"] = self.pred_model_param["tau_pr"]/self.pred_model_param["num_trees_pr"] ,self.pred_model_param["tau_trt"]/self.pred_model_param["num_trees_trt"]
-        self.cond_model_param["tau_pr"] = self.pred_model_param["tau_pr"]/self.pred_model_param["num_trees_pr"]
+        self.pred_model_param["tau_pr"], self.pred_model_param["tau_trt"] = (
+            self.pred_model_param["tau_pr"] / self.pred_model_param["num_trees_pr"],
+            self.pred_model_param["tau_trt"] / self.pred_model_param["num_trees_trt"],
+        )
+        self.cond_model_param["tau_pr"] = (
+            self.pred_model_param["tau_pr"] / self.pred_model_param["num_trees_pr"]
+        )
 
     # def set_model_atrs(self,**kwargs):
     #             for k,v in kwargs.items():
@@ -476,8 +482,11 @@ class BayesianCausalForest:
         self.X_train = X
         self.Y_train = Y
         self.T_train = T
-        self.pred_model_param["tau_pr"],self.pred_model_param["tau_trt"] = np.var(Y)*self.pred_model_param["tau_pr"] ,np.var(Y)*self.pred_model_param["tau_trt"]
-        self.cond_model_param["tau_pr"] = np.var(Y)*self.pred_model_param["tau_pr"]
+        self.pred_model_param["tau_pr"], self.pred_model_param["tau_trt"] = (
+            np.var(Y) * self.pred_model_param["tau_pr"],
+            np.var(Y) * self.pred_model_param["tau_trt"],
+        )
+        self.cond_model_param["tau_pr"] = np.var(Y) * self.pred_model_param["tau_pr"]
         self.X_train_prog = X
 
     def fit_propensity_model(self, num_trees=100, num_sweeps=80, burnin=15, **kwargs):
@@ -485,7 +494,9 @@ class BayesianCausalForest:
         if not self.data_is_stored:
             assert "Must store training data first"
 
-        self.prop_model = XBART(num_trees=num_trees, num_sweeps=num_sweeps, burnin=burnin, **kwargs)
+        self.prop_model = XBART(
+            num_trees=num_trees, num_sweeps=num_sweeps, burnin=burnin, **kwargs
+        )
         self.prop_model.fit(self.X_train, self.T_train)
         self.propensity_is_fit = True
 
@@ -576,12 +587,12 @@ class BayesianCausalForest:
             return (tau_adj + predictions[1]).T, tau_adj.T
         else:
             return (tau_adj + predictions[1]).T
-    
-    def pred_CATE(self,X,return_mean=False):
+
+    def pred_CATE(self, X, return_mean=False):
         results = self.model.predict(X, return_mean=return_mean)
         return results
-        
-    def pred_from_model(self,X,T, return_tau=False):
+
+    def pred_from_model(self, X, T, return_tau=False):
 
         if self.propensity_is_fit:
             T_pred = self.prop_model.predict(X)
@@ -589,7 +600,7 @@ class BayesianCausalForest:
 
         else:
             X1 = X
-        
+
         predictions = self.model.predict(X, X1=X1, return_mean=False, return_muhat=True)
 
         b = self.model.b
@@ -601,9 +612,11 @@ class BayesianCausalForest:
             return (tau_adj + predictions[1]).T, tau_adj.T
         else:
             return (tau_adj + predictions[1]).T
-        
+
     def posterior_conditional_model(
-        self, Y_residuals, n_draws, 
+        self,
+        Y_residuals,
+        n_draws,
     ):
         """ "Returns n sample predictions from the posterior"""
 
@@ -630,16 +643,17 @@ class BayesianCausalForest:
             X1 = np.concatenate([self.X, T_pred.reshape(-1, 1)], axis=1)
 
         return model
-    
+
     def fit_model(
-        self, n_samples, 
+        self,
+        n_samples,
     ):
         """ "Returns n sample predictions from the posterior"""
 
         if not self.data_is_stored:
             assert "Must store training data first"
 
-        n_samples = min([n_samples,self.max_sample_num])
+        n_samples = min([n_samples, self.max_sample_num])
 
         self.model = XBCF(
             num_sweeps=n_samples,
@@ -785,11 +799,10 @@ class BayesianCausalForest:
 
         if self.model is None:
             self.fit_model(self.max_sample_num)
-        
-        preds,tau = self.pred_from_model(X,T,return_tau=True)
 
-        preds_sample = preds[np.random.randint(0,len(preds),size=n_samples)]
+        preds, tau = self.pred_from_model(X, T, return_tau=True)
 
+        preds_sample = preds[np.random.randint(0, len(preds), size=n_samples)]
 
         predictions_unpaired = predictions_in_EIG_obs_form(
             preds_sample,
@@ -800,45 +813,44 @@ class BayesianCausalForest:
         if self.cond_models is None:
 
             self.cond_models = []
-            n_cond_samples = min([n_samples_outer_expectation_caus,self.cond_max_samples_number])
-            
-            random_sample = np.random.choice(
-                np.arange(len(preds)), n_cond_samples
+            n_cond_samples = min(
+                [n_samples_outer_expectation_caus, self.cond_max_samples_number]
             )
-            
+
+            random_sample = np.random.choice(np.arange(len(preds)), n_cond_samples)
+
             b = self.model.b
             b_adj = b / (np.expand_dims(b[:, 1] - b[:, 0], axis=1))
 
             tau_train = (self.model.tauhats * (b_adj.T[self.T_train])).T
-            
 
             print("Getting conditional samples")
             causal_sample = []
             for i in tqdm(random_sample):
 
                 model = XBCF(
-                num_trees_trt=0,
-                num_sweeps=n_samples_inner_expectation_caus,
-                p_categorical_pr=self.p_categorical_pr,
-                p_categorical_trt=self.p_categorical_trt,
-                **self.cond_model_param
-            )
-                
-                Y_residuals = self.Y_train-tau_train[i]
+                    num_trees_trt=0,
+                    num_sweeps=n_samples_inner_expectation_caus,
+                    p_categorical_pr=self.p_categorical_pr,
+                    p_categorical_trt=self.p_categorical_trt,
+                    **self.cond_model_param
+                )
+
+                Y_residuals = self.Y_train - tau_train[i]
 
                 model.fit(
                     x_t=np.zeros_like(self.X_train),  # Covariates treatment effect
                     x=self.X_train_prog,  # Covariates outcome (including propensity score)
                     y=Y_residuals,  # Outcome
                     z=self.T_train,  # Treatment group
-                )        
-                
-                self.cond_models.append((i,model))
-        
+                )
+
+                self.cond_models.append((i, model))
+
         random_sample_caus_expectation = np.random.choice(
-        np.arange(len(self.cond_models)), n_samples_inner_expectation_caus
-    )
-        
+            np.arange(len(self.cond_models)), n_samples_inner_expectation_caus
+        )
+
         if self.propensity_is_fit:
             T_pred = self.prop_model.predict(X)
             X1 = np.concatenate([X, T_pred.reshape(-1, 1)], axis=1)
@@ -847,11 +859,15 @@ class BayesianCausalForest:
 
         predictions_paired = []
         for i in random_sample_caus_expectation:
-            (sample,model) = self.cond_models[i]
+            (sample, model) = self.cond_models[i]
             original_prediction = preds[sample]
-            _, preds_conditonal = model.predict(X,X1,return_muhat=True,return_mean=False)
-            paired_predicitons = ((preds_conditonal + np.expand_dims(tau[sample],axis=1)).T)
-            predictions_paired.append((original_prediction,paired_predicitons))
+            _, preds_conditonal = model.predict(
+                X, X1, return_muhat=True, return_mean=False
+            )
+            paired_predicitons = (
+                preds_conditonal + np.expand_dims(tau[sample], axis=1)
+            ).T
+            predictions_paired.append((original_prediction, paired_predicitons))
 
         posterior_predictive_entropy = calc_posterior_predictive_entropy(
             predictions_unpaired, self.sigma_0_sq ** (1 / 2)
@@ -864,135 +880,217 @@ class BayesianCausalForest:
             "Obs EIG": posterior_predictive_entropy
             - n_e / 2 * (1 + np.log(2 * np.pi * self.sigma_0_sq)),
             "Causal EIG": compute_EIG_causal_from_samples(
-            predictions_unpaired, predictions_paired, self.sigma_0_sq ** (1 / 2)
-        )
-            ,
+                predictions_unpaired, predictions_paired, self.sigma_0_sq ** (1 / 2)
+            ),
         }
         return results_dict
 
+
 class CausalGP:
 
-    def __init__(self,max_gp_iterations=100,min_var=0.0,mode = "CMGP") -> None:
+    def __init__(self, max_gp_iterations=100, min_var=0.0, mode="CMGP") -> None:
         self.max_gp_iterations = max_gp_iterations
         self.model = None
         self.mode = mode
         self.min_var = min_var
 
-    def fit(self,X_train,T_train,Y_train):
+    def fit(self, X_train, T_train, Y_train):
 
-        self.model = CMGP(X_train, T_train, Y_train, max_gp_iterations = self.max_gp_iterations,mode=self.mode)
+        self.model = CMGP(
+            X_train,
+            T_train,
+            Y_train,
+            max_gp_iterations=self.max_gp_iterations,
+            mode=self.mode,
+        )
 
-        self.X0_train =  np.array(
-                np.hstack([X_train, np.zeros_like(X_train[:, 1].reshape((len(X_train[:, 1]), 1)))])
+        self.X0_train = np.array(
+            np.hstack(
+                [X_train, np.zeros_like(X_train[:, 1].reshape((len(X_train[:, 1]), 1)))]
             )
-        self.X1_train =  np.array(
-                np.hstack([X_train, np.ones_like(X_train[:, 1].reshape((len(X_train[:, 1]), 1)))])
+        )
+        self.X1_train = np.array(
+            np.hstack(
+                [X_train, np.ones_like(X_train[:, 1].reshape((len(X_train[:, 1]), 1)))]
             )
+        )
         return None
 
-    def pred_CATE(self,X_test):
+    def pred_CATE(self, X_test):
         return self.model.predict(X_test)
-    
-    def obs_EIG_closed_form(self,X,T):
-        
-        X0 = X[T==0]
+
+    def obs_EIG_closed_form(self, X, T):
+
+        X0 = X[T == 0]
         X0 = np.array(
-                np.hstack([X0, np.zeros_like(X0[:, 1].reshape((len(X0[:, 1]), 1)))])
-            )
-        X1 = X[T==1]
+            np.hstack([X0, np.zeros_like(X0[:, 1].reshape((len(X0[:, 1]), 1)))])
+        )
+        X1 = X[T == 1]
         X1 = np.array(
-    
-    np.hstack([X1, np.ones_like(X1[:, 1].reshape((len(X1[:, 1]), 1)))])
-            )
-        
+            np.hstack([X1, np.ones_like(X1[:, 1].reshape((len(X1[:, 1]), 1)))])
+        )
+
         X0_shape = X0.shape
         X1_shape = X1.shape
         noise_dict_0 = {
-            "output_index": X0[:, X0_shape[1] - 1]
-            .reshape((X0_shape[0], 1))
-            .astype(int)}
+            "output_index": X0[:, X0_shape[1] - 1].reshape((X0_shape[0], 1)).astype(int)
+        }
         noise_dict_1 = {
-            "output_index": X1[:, X1_shape[1] - 1]
-            .reshape((X1_shape[0], 1))
-            .astype(int)}
-        
+            "output_index": X1[:, X1_shape[1] - 1].reshape((X1_shape[0], 1)).astype(int)
+        }
+
         Sigma_1 = np.block(
-            [[self.model.model.posterior_covariance_between_points(X0,X0,Y_metadata=noise_dict_0), self.model.model.posterior_covariance_between_points(X0,X1,include_likelihood=False) ],
-            [self.model.model.posterior_covariance_between_points(X1,X0,include_likelihood=False), self.model.model.posterior_covariance_between_points(X1,X1,Y_metadata=noise_dict_1) ]]
+            [
+                [
+                    self.model.model.posterior_covariance_between_points(
+                        X0, X0, Y_metadata=noise_dict_0
+                    ),
+                    self.model.model.posterior_covariance_between_points(
+                        X0, X1, include_likelihood=False
+                    ),
+                ],
+                [
+                    self.model.model.posterior_covariance_between_points(
+                        X1, X0, include_likelihood=False
+                    ),
+                    self.model.model.posterior_covariance_between_points(
+                        X1, X1, Y_metadata=noise_dict_1
+                    ),
+                ],
+            ]
         )
 
-        n_1,n_0 = len(X1),len(X0)
+        n_1, n_0 = len(X1), len(X0)
 
-        sign, logdet = np.linalg.slogdet(Sigma_1+self.min_var*np.eye(Sigma_1.shape[0]))
-        return 0.5*(logdet - n_0 * np.log(self.model.model.likelihood[0]+self.min_var) - n_1 * np.log(self.model.model.likelihood[1]+self.min_var))
-    
-    def causal_EIG_closed_form(self,X,T,holdout_X = None):
+        sign, logdet = np.linalg.slogdet(
+            Sigma_1 + self.min_var * np.eye(Sigma_1.shape[0])
+        )
+        return 0.5 * (
+            logdet
+            - n_0 * np.log(self.model.model.likelihood[0] + self.min_var)
+            - n_1 * np.log(self.model.model.likelihood[1] + self.min_var)
+        )
+
+    def causal_EIG_closed_form(self, X, T, holdout_X=None):
 
         if holdout_X is None:
             holdout_X0 = self.X0_train
             holdout_X1 = self.X1_train
-        
+
         else:
             holdout_X = holdout_X
 
-            holdout_X0 = np.array(np.hstack([holdout_X, np.zeros_like(holdout_X[:, 1].reshape((len(holdout_X[:, 1]), 1)))]))
-            holdout_X1 = np.hstack([holdout_X, np.ones_like(holdout_X[:, 1].reshape((len(holdout_X[:, 1]), 1)))])
-            
-        
-        X0 = X[T==0]
-        X0 = np.array(
-                np.hstack([X0, np.zeros_like(X0[:, 1].reshape((len(X0[:, 1]), 1)))])
+            holdout_X0 = np.array(
+                np.hstack(
+                    [
+                        holdout_X,
+                        np.zeros_like(
+                            holdout_X[:, 1].reshape((len(holdout_X[:, 1]), 1))
+                        ),
+                    ]
+                )
             )
-        X1 = X[T==1]
+            holdout_X1 = np.hstack(
+                [
+                    holdout_X,
+                    np.ones_like(holdout_X[:, 1].reshape((len(holdout_X[:, 1]), 1))),
+                ]
+            )
+
+        X0 = X[T == 0]
+        X0 = np.array(
+            np.hstack([X0, np.zeros_like(X0[:, 1].reshape((len(X0[:, 1]), 1)))])
+        )
+        X1 = X[T == 1]
         X1 = np.array(
             np.hstack([X1, np.ones_like(X1[:, 1].reshape((len(X1[:, 1]), 1)))])
-            )
-        
+        )
+
         X0_shape = X0.shape
         X1_shape = X1.shape
 
         noise_dict_0 = {
-            "output_index": X0[:, X0_shape[1] - 1]
-            .reshape((X0_shape[0], 1))
-            .astype(int)}
-        
+            "output_index": X0[:, X0_shape[1] - 1].reshape((X0_shape[0], 1)).astype(int)
+        }
+
         noise_dict_1 = {
-            "output_index": X1[:, X1_shape[1] - 1]
-            .reshape((X1_shape[0], 1))
-            .astype(int)}
-        
+            "output_index": X1[:, X1_shape[1] - 1].reshape((X1_shape[0], 1)).astype(int)
+        }
+
         noise_dict_0_train = {
             "output_index": holdout_X0[:, holdout_X0.shape[1] - 1]
             .reshape((holdout_X0.shape[0], 1))
-            .astype(int)}
+            .astype(int)
+        }
 
         noise_dict_1_train = {
             "output_index": holdout_X1[:, holdout_X1.shape[1] - 1]
             .reshape((holdout_X1.shape[0], 1))
-            .astype(int)}
-        
+            .astype(int)
+        }
+
         Sigma_1 = np.block(
-            [[self.model.model.posterior_covariance_between_points(X0,X0,Y_metadata=noise_dict_0), self.model.model.posterior_covariance_between_points(X0,X1,include_likelihood=False) ],
-            [self.model.model.posterior_covariance_between_points(X1,X0,include_likelihood=False), self.model.model.posterior_covariance_between_points(X1,X1,Y_metadata=noise_dict_1) ]]
+            [
+                [
+                    self.model.model.posterior_covariance_between_points(
+                        X0, X0, Y_metadata=noise_dict_0
+                    ),
+                    self.model.model.posterior_covariance_between_points(
+                        X0, X1, include_likelihood=False
+                    ),
+                ],
+                [
+                    self.model.model.posterior_covariance_between_points(
+                        X1, X0, include_likelihood=False
+                    ),
+                    self.model.model.posterior_covariance_between_points(
+                        X1, X1, Y_metadata=noise_dict_1
+                    ),
+                ],
+            ]
         )
 
-        Sigma_2 = self.model.model.posterior_covariance_between_points(holdout_X0,holdout_X0,Y_metadata=noise_dict_0_train)+self.model.model.posterior_covariance_between_points(holdout_X1,holdout_X1,Y_metadata=noise_dict_1_train)-2*self.model.model.posterior_covariance_between_points(holdout_X0,holdout_X1,include_likelihood=False)
-
-        Sigma_join = np.concatenate([
-            self.model.model.posterior_covariance_between_points(holdout_X1,X0,include_likelihood=False)-self.model.model.posterior_covariance_between_points(holdout_X0,X0,include_likelihood=False),
-            self.model.model.posterior_covariance_between_points(holdout_X1,X1,include_likelihood=False)-self.model.model.posterior_covariance_between_points(holdout_X0,X1,include_likelihood=False)
-                                     ],axis=1)
-        
-        Sigma = np.block([
-            [Sigma_1, Sigma_join.T],
-            [Sigma_join, Sigma_2]
-        ]
-
+        Sigma_2 = (
+            self.model.model.posterior_covariance_between_points(
+                holdout_X0, holdout_X0, Y_metadata=noise_dict_0_train
+            )
+            + self.model.model.posterior_covariance_between_points(
+                holdout_X1, holdout_X1, Y_metadata=noise_dict_1_train
+            )
+            - 2
+            * self.model.model.posterior_covariance_between_points(
+                holdout_X0, holdout_X1, include_likelihood=False
+            )
         )
-    
 
-        sign, logdet1 = np.linalg.slogdet(Sigma_1+self.min_var*np.eye(Sigma_1.shape[0]))
-        sign, logdet2 = np.linalg.slogdet(Sigma_2+self.min_var*np.eye(Sigma_2.shape[0]))
-        sign, logdet_sig = np.linalg.slogdet(Sigma+self.min_var*np.eye(Sigma.shape[0]))
+        Sigma_join = np.concatenate(
+            [
+                self.model.model.posterior_covariance_between_points(
+                    holdout_X1, X0, include_likelihood=False
+                )
+                - self.model.model.posterior_covariance_between_points(
+                    holdout_X0, X0, include_likelihood=False
+                ),
+                self.model.model.posterior_covariance_between_points(
+                    holdout_X1, X1, include_likelihood=False
+                )
+                - self.model.model.posterior_covariance_between_points(
+                    holdout_X0, X1, include_likelihood=False
+                ),
+            ],
+            axis=1,
+        )
 
-        return logdet1+logdet2-logdet_sig
+        Sigma = np.block([[Sigma_1, Sigma_join.T], [Sigma_join, Sigma_2]])
+
+        sign, logdet1 = np.linalg.slogdet(
+            Sigma_1 + self.min_var * np.eye(Sigma_1.shape[0])
+        )
+        sign, logdet2 = np.linalg.slogdet(
+            Sigma_2 + self.min_var * np.eye(Sigma_2.shape[0])
+        )
+        sign, logdet_sig = np.linalg.slogdet(
+            Sigma + self.min_var * np.eye(Sigma.shape[0])
+        )
+
+        return logdet1 + logdet2 - logdet_sig

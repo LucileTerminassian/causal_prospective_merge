@@ -5,6 +5,7 @@ import scipy.stats._covariance as cov
 import torch
 from tqdm import tqdm
 
+
 def multivariate_normal_likelihood(data, mean, covariance):
     """
     Compute the likelihood of multivariate normal distribution.
@@ -154,18 +155,16 @@ def compute_EIG_causal_from_samples(pred_list_unpaired, pred_list_paired, sigma)
     covariance = cov.CovViaDiagonal(sigma**2 * np.ones(n_e))
     sample_list = []
 
-    for (y_pred, y_pred_multiple_paired),(_,y_pred_multiple_unpaired) in tqdm(zip(pred_list_paired,pred_list_unpaired)):
+    for (y_pred, y_pred_multiple_paired), (_, y_pred_multiple_unpaired) in tqdm(
+        zip(pred_list_paired, pred_list_unpaired)
+    ):
         mvn = multivariate_normal(mean=y_pred, cov=covariance)
         y_sample = mvn.rvs()
         sample_list.append(
-            log_posterior_predictive(
-                y_sample, y_pred_multiple_paired, covariance
-            )
-            - log_posterior_predictive(
-                y_sample, y_pred_multiple_unpaired, covariance
-            ))
+            log_posterior_predictive(y_sample, y_pred_multiple_paired, covariance)
+            - log_posterior_predictive(y_sample, y_pred_multiple_unpaired, covariance)
+        )
     return sum(sample_list) / len(sample_list)
-
 
 
 def compute_EIG_obs_from_samples(pred_list, sigma, lower=False):

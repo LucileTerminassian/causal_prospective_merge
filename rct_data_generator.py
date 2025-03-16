@@ -7,7 +7,10 @@ from causallib import datasets
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 
-def get_data(dataset: str, path: str, th = None) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+
+def get_data(
+    dataset: str, path: str, th=None
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
     """
     Get the data for the specified dataset.
 
@@ -19,149 +22,209 @@ def get_data(dataset: str, path: str, th = None) -> tuple[pd.DataFrame, pd.DataF
         tuple[pd.DataFrame, pd.DataFrame, np.ndarray, np.ndarray]: data, covariates, treatment assignment, and outcomes
     """
 
-    if dataset == 'acic':
+    if dataset == "acic":
         data = datasets.data_loader.load_acic16()
-        del data['descriptors'] 
-        ground_truth = data['po'].rename(columns={'0': 'y0', '1': 'y1'})
-        x = data['X']
+        del data["descriptors"]
+        ground_truth = data["po"].rename(columns={"0": "y0", "1": "y1"})
+        x = data["X"]
 
         # selected_columns = x.filter(regex='^x_(2|21|24)')
         # one_hot = OneHotEncoder(drop="first").fit(selected_columns)
         # new_data = pd.DataFrame(
         #     one_hot.transform(selected_columns).toarray(),  # type: ignore
         # )
-        columns_to_drop = x.filter(regex='^x_(2|21|24)').columns
+        columns_to_drop = x.filter(regex="^x_(2|21|24)").columns
         x = x.drop(columns=columns_to_drop)
-        
+
         # x = pd.concat([x, new_data], axis=1)
-        data = pd.concat([x, data['a'], data['y'], ground_truth], axis=1)
+        data = pd.concat([x, data["a"], data["y"], ground_truth], axis=1)
         data.dropna(inplace=True)
-        data.rename(columns={'a': 'T', 0: 'Y'}, inplace=True)
+        data.rename(columns={"a": "T", 0: "Y"}, inplace=True)
         x = data.drop(columns=["y0", "y1", "Y", "T"])
-        t = data['T']
-        y = data['Y']
+        t = data["T"]
+        y = data["Y"]
 
     elif dataset == "twins":
         data = pd.read_csv(path + "data/twins_ztwins_sample0.csv")
         data.dropna(inplace=True)
-        data.rename(columns = {'t': 'T', 'y': 'Y'}, inplace=True)
+        data.rename(columns={"t": "T", "y": "Y"}, inplace=True)
         x = data.drop(columns=["y0", "y1", "ite", "Y", "T"])
         t = data["T"]
         y = data["Y"]
-    
+
     elif dataset == "IDHP":
-        data = pd.read_csv("https://raw.githubusercontent.com/AMLab-Amsterdam/CEVAE/master/datasets/IHDP/csv/ihdp_npci_1.csv", header = None)
-        col =  ["T", "Y", "y_cf", "y0", "y1" ,]
-        for i in range(1,26):
-            col.append("x"+str(i))
+        data = pd.read_csv(
+            "https://raw.githubusercontent.com/AMLab-Amsterdam/CEVAE/master/datasets/IHDP/csv/ihdp_npci_1.csv",
+            header=None,
+        )
+        col = [
+            "T",
+            "Y",
+            "y_cf",
+            "y0",
+            "y1",
+        ]
+        for i in range(1, 26):
+            col.append("x" + str(i))
         data.columns = col
-        data = data.astype({"T":'float'}, copy=False)
+        data = data.astype({"T": "float"}, copy=False)
         data = data.drop(columns=["y_cf"])
-        x = data[["x"+str(i) for  i in range(1,6)]]
+        x = data[["x" + str(i) for i in range(1, 6)]]
         IDHP_scalar = StandardScaler().fit(x)
         x = IDHP_scalar.transform(x)
-        data[["x"+str(i) for  i in range(1,6)]] = x
-        x = data[["x"+str(i) for  i in range(1,26)]]
-        t = data['T']
-        y = data['Y']
+        data[["x" + str(i) for i in range(1, 6)]] = x
+        x = data[["x" + str(i) for i in range(1, 26)]]
+        t = data["T"]
+        y = data["Y"]
 
-    elif dataset == 'lalonde':
-        data = pd.read_csv( path+ "data/lalonde_cps_sample0.csv")
+    elif dataset == "lalonde":
+        data = pd.read_csv(path + "data/lalonde_cps_sample0.csv")
         data.dropna(inplace=True)
-        data.rename(columns = {'t': 'T', 'y': 'Y'}, inplace=True)
+        data.rename(columns={"t": "T", "y": "Y"}, inplace=True)
         if th is not None:
             x = data.drop(columns=["y0", "y1", "ite", "Y", "T"])
             logistic_model = LogisticRegression(max_iter=1000)
-            logistic_model.fit(x, data['T'])
+            logistic_model.fit(x, data["T"])
             propensity_scores = logistic_model.predict_proba(x)[:, 1]
-            data.loc[propensity_scores > th, 'T'] = 1
-            print('portion of treated is '+str(np.sum(data['T'])/len(data['T'])))
-        data['Y'] = data['y1'] * data['T'] + data['y0'] * (1 - data['T'])
+            data.loc[propensity_scores > th, "T"] = 1
+            print("portion of treated is " + str(np.sum(data["T"]) / len(data["T"])))
+        data["Y"] = data["y1"] * data["T"] + data["y0"] * (1 - data["T"])
         x = data.drop(columns=["y0", "y1", "ite", "Y", "T"])
         t = data["T"]
         y = data["Y"]
 
     else:
         raise ValueError(f"Dataset {dataset} not recognized")
-    
+
     y_std = y.std()
     y_mean = y.mean()
-    y = (y - y.mean())/y_std
-    data['Y'] = y
+    y = (y - y.mean()) / y_std
+    data["Y"] = y
 
     if "y0" in data.columns:
-        data[["y0","y1"]] = (data[["y0","y1"]] - y_mean) /y_std
+        data[["y0", "y1"]] = (data[["y0", "y1"]] - y_mean) / y_std
 
     return data, x, t, y
 
 
-def generating_random_sites_from(XandT, data_with_groundtruth, exp_parameters, added_T_coef=1, binary_outcome=False):
-    
+def generating_random_sites_from(
+    XandT, data_with_groundtruth, exp_parameters, added_T_coef=1, binary_outcome=False
+):
+
     candidate_sites = {}
     sample_size, number_features = np.shape(XandT)[0], np.shape(XandT)[1]
-    function_indices = {0: lambda X: 1, 1: lambda X: X**3, 2: lambda X: X, 3: lambda X: X**2 }
-    number_of_candidate_sites = exp_parameters['number_of_candidate_sites']
-    min_sample_size_cand = exp_parameters['min_sample_size_cand']
-    max_sample_size_cand = exp_parameters['max_sample_size_cand']
+    function_indices = {
+        0: lambda X: 1,
+        1: lambda X: X**3,
+        2: lambda X: X,
+        3: lambda X: X**2,
+    }
+    number_of_candidate_sites = exp_parameters["number_of_candidate_sites"]
+    min_sample_size_cand = exp_parameters["min_sample_size_cand"]
+    max_sample_size_cand = exp_parameters["max_sample_size_cand"]
     outcome_function = None
-    std_true_y = exp_parameters['std_true_y']
-    power_x = exp_parameters['power_x']
-    min_treat_group_size = exp_parameters['min_treat_group_size']
-    power_x_t = exp_parameters['power_x_t']
+    std_true_y = exp_parameters["std_true_y"]
+    power_x = exp_parameters["power_x"]
+    min_treat_group_size = exp_parameters["min_treat_group_size"]
+    power_x_t = exp_parameters["power_x_t"]
     created_sites = 0
-    coef_sample_width = exp_parameters['coef_sample_width']
+    coef_sample_width = exp_parameters["coef_sample_width"]
 
-    while created_sites < number_of_candidate_sites : # inforce + 1 cause we also subsample a host site
+    while (
+        created_sites < number_of_candidate_sites
+    ):  # inforce + 1 cause we also subsample a host site
 
         # np.random.seed(np.random.randint(10000))
-        
-        selected_features_for_subsampling = np.random.randint(2, size = number_features) 
+
+        selected_features_for_subsampling = np.random.randint(2, size=number_features)
         # binary bool vector representing selection for being an input of the sampling function
 
-        if created_sites==0:
-            random_coefs = [np.random.uniform(-coef_sample_width/2, coef_sample_width/2) for _ in range(number_features)] 
+        if created_sites == 0:
+            random_coefs = [
+                np.random.uniform(-coef_sample_width / 2, coef_sample_width / 2)
+                for _ in range(number_features)
+            ]
         else:
-            random_coefs = [np.random.uniform(-coef_sample_width/2, coef_sample_width/2) for _ in range(number_features)] 
-            
-        random_fct_idx = [np.random.randint(0, len(function_indices.keys())) for _ in range(number_features)] 
-        
-        def p_assigned_to_site(X, T,eps):
+            random_coefs = [
+                np.random.uniform(-coef_sample_width / 2, coef_sample_width / 2)
+                for _ in range(number_features)
+            ]
+
+        random_fct_idx = [
+            np.random.randint(0, len(function_indices.keys()))
+            for _ in range(number_features)
+        ]
+
+        def p_assigned_to_site(X, T, eps):
             result = 0
-            for j in range(number_features-1):
-                result += selected_features_for_subsampling[j] * random_coefs[j] * function_indices[random_fct_idx[j]](X[j])
+            for j in range(number_features - 1):
+                result += (
+                    selected_features_for_subsampling[j]
+                    * random_coefs[j]
+                    * function_indices[random_fct_idx[j]](X[j])
+                )
             # here i use added_T_coef * random_coefs to increase importance of T
-            result +=  added_T_coef * random_coefs[-1] *  function_indices[random_fct_idx[-1]](T) # T always selected in the end
+            result += (
+                added_T_coef
+                * random_coefs[-1]
+                * function_indices[random_fct_idx[-1]](T)
+            )  # T always selected in the end
             return sigmoid(result)
-        
 
-        if created_sites==0:
-            sample_size = exp_parameters['host_sample_size']+ exp_parameters['host_test_size']
+        if created_sites == 0:
+            sample_size = (
+                exp_parameters["host_sample_size"] + exp_parameters["host_test_size"]
+            )
 
         else:
-            sample_size = np.random.randint(min_sample_size_cand, max_sample_size_cand + 1)  # Add 1 to include max_sample_size_cand
+            sample_size = np.random.randint(
+                min_sample_size_cand, max_sample_size_cand + 1
+            )  # Add 1 to include max_sample_size_cand
 
-        design_data_cand = subsample_one_dataset(XandT, p_assigned_to_site, sample_size, power_x, power_x_t, outcome_function, std_true_y, seed=np.random.randint(10000))
+        design_data_cand = subsample_one_dataset(
+            XandT,
+            p_assigned_to_site,
+            sample_size,
+            power_x,
+            power_x_t,
+            outcome_function,
+            std_true_y,
+            seed=np.random.randint(10000),
+        )
         design_data_cand = design_data_cand.dropna()
         any_nan = design_data_cand.isna().any().any()
         at_least_30_treated = np.sum(design_data_cand["T"]) > min_treat_group_size
-        at_least_30_untreated = len(design_data_cand["T"])-np.sum(design_data_cand["T"]) > min_treat_group_size
-        candidate = pd.concat([design_data_cand, data_with_groundtruth.loc[design_data_cand.index, 'Y']], axis=1)
+        at_least_30_untreated = (
+            len(design_data_cand["T"]) - np.sum(design_data_cand["T"])
+            > min_treat_group_size
+        )
+        candidate = pd.concat(
+            [design_data_cand, data_with_groundtruth.loc[design_data_cand.index, "Y"]],
+            axis=1,
+        )
 
         if binary_outcome:
             at_least_20_y_equal1 = np.sum(candidate["Y"]) > 20
-            at_least_20_y_equal0 = len(candidate["Y"])-np.sum(candidate["Y"]) > 20
+            at_least_20_y_equal0 = len(candidate["Y"]) - np.sum(candidate["Y"]) > 20
         else:
             at_least_20_y_equal1 = at_least_20_y_equal0 = True
 
-        if not design_data_cand.empty and not any_nan and at_least_30_treated and at_least_30_untreated and at_least_20_y_equal1 and at_least_20_y_equal0: 
+        if (
+            not design_data_cand.empty
+            and not any_nan
+            and at_least_30_treated
+            and at_least_30_untreated
+            and at_least_20_y_equal1
+            and at_least_20_y_equal0
+        ):
             # we're appending
             candidate_sites[created_sites] = candidate
             created_sites += 1
         else:
-            pass # not appending
+            pass  # not appending
 
-            
     return candidate_sites
+
 
 def generate_rct(
     x_sampled_covariates: dict[str, np.ndarray], seed: int = 0
@@ -235,9 +298,9 @@ def generate_design_matrix(
 
 def append_outcome(
     data: pd.DataFrame,
-    outcome_function, #: Callable
-    noise_scale = None, #: Union [float, None] 
-    eps = None, #Union [np.ndarray, None]
+    outcome_function,  #: Callable
+    noise_scale=None,  #: Union [float, None]
+    eps=None,  # Union [np.ndarray, None]
 ) -> pd.DataFrame:
     """
     Generate y = outcome_function(X, T) + N(0, noise_scale)
@@ -271,7 +334,7 @@ def subsample_two_complementary_datasets(
     n_complementary: int,
     power_x: int,
     power_x_t: int,
-    outcome_function, #: Callable
+    outcome_function,  #: Callable
     std_true_y: float,
     include_intercept: bool = True,
     seed: int = 0,
@@ -348,11 +411,11 @@ def subsample_two_complementary_datasets(
 # Function to generate the second candidate dataset
 def subsample_one_dataset(
     XandT: pd.DataFrame,
-    assignment_function, #: Callable
+    assignment_function,  #: Callable
     sample_size: int,
     power_x: int,
     power_x_t: int,
-    outcome_function, #: Callable
+    outcome_function,  #: Callable
     std_true_y: float,
     include_intercept: bool = True,
     seed: int = 0,
@@ -361,8 +424,7 @@ def subsample_one_dataset(
         raise ValueError("sample_size > n_global")
     # np.random.seed(seed)
 
-
-    data = pd.DataFrame(index=range(sample_size), columns=XandT.columns, dtype=float) 
+    data = pd.DataFrame(index=range(sample_size), columns=XandT.columns, dtype=float)
     count_cand2 = 0
     for _, x_and_t in XandT.iterrows():
         proba_assigned_to_cand2 = assignment_function(
@@ -388,11 +450,11 @@ def subsample_one_dataset(
 
 
 def generate_data_varying_sample_size(
-    data_parameters, #: dict[str, Any]
-    X_rct = None, #Union [pd.DataFrame, None] 
-    T_rct = None, #Union [np.ndarray, None]
+    data_parameters,  #: dict[str, Any]
+    X_rct=None,  # Union [pd.DataFrame, None]
+    T_rct=None,  # Union [np.ndarray, None]
     include_intercept: bool = True,
-    seed: int=0,
+    seed: int = 0,
 ) -> dict[int, dict]:
     # if X_rct and T_rct are None, generate them; if not, use them
     # need "x_distributions" to bein the data_parameters if X_rct and T_rct are None
@@ -404,7 +466,9 @@ def generate_data_varying_sample_size(
 
     data = {}
     np.random.seed(seed)
-    seed_for_each_length = np.random.randint(0, 1001, size=len(data_parameters["varying_sample_sizes"]))
+    seed_for_each_length = np.random.randint(
+        0, 1001, size=len(data_parameters["varying_sample_sizes"])
+    )
 
     for i, length in enumerate(data_parameters["varying_sample_sizes"]):
         # should the generation be outside of the loop actually?
@@ -417,7 +481,9 @@ def generate_data_varying_sample_size(
             assert X_rct is not None and T_rct is not None, "Need both X_rct and T_rct"
             XandT = pd.concat([X_rct, pd.DataFrame(T_rct, columns=["T"])], axis=1)
 
-        if data_parameters["fixed_n_complementary"] is not None: # only cand2 length varies
+        if (
+            data_parameters["fixed_n_complementary"] is not None
+        ):  # only cand2 length varies
             design_data_host, design_data_comp = subsample_two_complementary_datasets(
                 XandT=XandT,
                 f_assigned_to_host=data_parameters["p_assigned_to_host"],  # host?
@@ -466,11 +532,11 @@ def generate_data_varying_sample_size(
 
 
 def generate_exact_data_varying_sample_size(
-    data_parameters, #: dict[str, Any]
-    X_rct = None, #: Union [pd.DataFrame, None]
-    T_rct = None, # : Union [np.ndarray, None]
+    data_parameters,  #: dict[str, Any]
+    X_rct=None,  #: Union [pd.DataFrame, None]
+    T_rct=None,  # : Union [np.ndarray, None]
     include_intercept: bool = True,
-    seed: int=0,
+    seed: int = 0,
 ) -> dict[int, dict]:
     n_host = data_parameters["n_host"]
     power_x = data_parameters["power_x"]
@@ -480,12 +546,16 @@ def generate_exact_data_varying_sample_size(
 
     data = {}
     np.random.seed(seed)
-    seed_for_each_length = np.random.randint(0, 1001, size=len(data_parameters["varying_sample_sizes"]))
+    seed_for_each_length = np.random.randint(
+        0, 1001, size=len(data_parameters["varying_sample_sizes"])
+    )
 
     for i, length in enumerate(data_parameters["varying_sample_sizes"]):
         # should the generation be outside of the loop actually?
         if X_rct is None and T_rct is None:
-            XandT = generate_rct(data_parameters["x_distributions"], seed=seed_for_each_length[i])
+            XandT = generate_rct(
+                data_parameters["x_distributions"], seed=seed_for_each_length[i]
+            )
         else:
             assert X_rct is not None and T_rct is not None, "Need both X_rct and T_rct"
             XandT = pd.concat([X_rct, pd.DataFrame(T_rct, columns=["T"])], axis=1)
